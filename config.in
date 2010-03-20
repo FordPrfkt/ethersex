@@ -241,6 +241,7 @@ source services/clock/config.in
 source services/cron/config.in
 source services/dyndns/config.in
 source services/echo/config.in
+source services/gweather/config.in
 source services/wol/config.in
 source services/httpd/config.in
 source services/jabber/config.in

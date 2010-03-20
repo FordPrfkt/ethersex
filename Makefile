@@ -90,6 +90,7 @@ SUBDIRS += services/upnp
 SUBDIRS += services/appsample
 SUBDIRS += services/watchcat
 SUBDIRS += services/curtain
+SUBDIRS += services/gweather
 
 rootbuild=t
 
