@@ -36,6 +36,8 @@ enum {
 
 struct gweather_connection_state_t {
     uint8_t stage;
+
+    char outbuf[ECMD_OUTPUTBUF_LENGTH];
 };
 
 #endif  /* HAVE_GWEATHER_STATE_H */

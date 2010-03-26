@@ -28,39 +28,88 @@
 #include "config.h"
 #include "gweather.h"
 #include "protocols/uip/uip.h"
+#include "protocols/dns/resolv.h"
 #include "protocols/ecmd/parser.h"
 #include "protocols/ecmd/ecmd-base.h"
 
 static uip_conn_t *gweather_conn;
+static void gweather_query_cb(char *name, uip_ipaddr_t *ipaddr);
+static void gweather_main(void);
+
 #define STATE (&uip_conn->appstate.gweather)
+#define set_CONF_GOOGLE_IP(ip) uip_ipaddr((ip), 192,168,100,108)
+
+#ifndef DNS_SUPPORT
+  #error "gWeather needs DNS support"
+#endif
+
+static const char PROGMEM gweather_request[] =
+    "GET / HTTP/1.1\r\nHost: 192.168.100.108\r\nConnection: Close\r\n\r\n";
 
 int16_t
 gweather_update(char *cmd, char *output, uint16_t len){
-  GWEATHERDEBUG ("updating\n");
+  GWEATHERDEBUG ("updating. Connecting to server\n");
 
   uip_ipaddr_t ip;
-  set_CONF_GWEATHER_SERVER(&ip);
+  set_CONF_GOOGLE_IP(&ip);
   gweather_conn = uip_connect(&ip, HTONS(80), gweather_main);
+  STATE->stage = GWEATHER_SEND_REQUEST;
 
-  if (! gweather_conn) {
-    GWEATHERDEBUG ("no uip_conn available.\n");
-    return;
-  }
+  //ip_p = resolv_lookup("google.com");
 
-#ifdef GWEATHER_EEPROM_SUPPORT
-      eeprom_restore(gweather_city, &gweather_city, GWEATHER_CITYSIZE);
-#else
-      sprintf(gweather_city, "%s", CONF_GWEATHER_CITY);
-#endif
+//  if (NULL == ip_p) {
+//    GWEATHERDEBUG ("Resolving Address\n");
+//    resolv_query("www.google.com", gweather_query_cb);
+//  }
+//  else {
+//    GWEATHERDEBUG ("address resolved. Connecting\n");
+//    gweather_conn = uip_connect(ip_p, HTONS(80), gweather_main);
+//
+//    if (NULL == gweather_conn) {
+//      GWEATHERDEBUG ("no uip_conn available.\n");
+//    }
+//    else {
+//      GWEATHERDEBUG ("Connected.\n");
+//      STATE->stage = GWEATHER_SEND_REQUEST;
+//    }
+
+//    return ECMD_FINAL_OK;
+//  }
+
+  return ECMD_FINAL_OK;
 }
 
-void gweather_parse(void) {
-
+uint8_t gweather_parse(void) {
+  GWEATHERDEBUG((char*)uip_appdata);
+  return 0;
 }
 
 void gweather_send_request(void) {
-
+  GWEATHERDEBUG("Send GET request\n");
+  memcpy_P (uip_sappdata, gweather_request, sizeof (gweather_request));
+  GWEATHERDEBUG((char*)uip_sappdata);
+  uip_send (uip_sappdata, sizeof (gweather_request));
 }
+
+static void
+gweather_query_cb(char *name, uip_ipaddr_t *ipaddr)
+{
+  if (NULL == ipaddr) {
+    GWEATHERDEBUG ("could not resolve address\n");
+  }
+  else {
+    GWEATHERDEBUG ("address resolved. Connecting.\n");
+    gweather_conn= uip_connect (ipaddr, HTONS (80), gweather_main);
+
+    if (NULL != gweather_conn) {
+      GWEATHERDEBUG ("Connected.\n");
+      STATE->stage = GWEATHER_SEND_REQUEST;
+    }
+    else {
+      GWEATHERDEBUG ("could not connect\n");
+    }
+  }
+ }
 
 static void
 gweather_main(void)
@@ -75,16 +124,16 @@ gweather_main(void)
       gweather_conn = NULL;
     }
 
-    if (uip_connected()) {
-      GWEATHERDEBUG("new connection\n");
-      STATE->stage = GWEATHER_SEND_REQUEST;
+    if (uip_connected() || uip_rexmit() || (uip_poll() && STATE->stage == GWEATHER_SEND_REQUEST)) {
+      gweather_send_request();
     }
 
-    if (uip_acked() && STATE->stage == GWEATHER_SEND_REQUEST) {
+    if (uip_acked()) {
+      GWEATHERDEBUG("Request ACKed\n");
       STATE->stage = GWEATHER_WAIT_RESPONSE;
     }
 
-    if (uip_newdata() && uip_len) {
+    if (uip_newdata()) {
       STATE->stage = GWEATHER_RECEIVE;
 
       /* Zero-terminate */
@@ -96,29 +145,26 @@ gweather_main(void)
             return;
         }
     }
-
-    if (uip_poll() && STATE->stage == GWEATHER_SEND_REQUEST) {
-      gweather_send_request();
-      STATE->stage == GWEATHER_WAIT_RESPONSE;
-    }
-    else if (uip_rexmit()) {
-      gweather_send_request();
-    }
-    else {
-
-    }
 }
 
 void
 gweather_init(void)
 {
   GWEATHERDEBUG("initializing google weather client\n");
+
+//  #ifdef GWEATHER_EEPROM_SUPPORT
+//    eeprom_restore(gweather_city, &gweather_city, GWEATHER_CITYSIZE);
+//  #else
+//    sprintf(gweather_city, "%s", CONF_GWEATHER_CITY);
+//  #endif
 }
 
 int16_t
 gweather_onrequest(char *cmd, char *output, uint16_t len){
   GWEATHERDEBUG ("main\n");
   // enter your code here
+
+  return ECMD_FINAL_OK;
 }
 
 

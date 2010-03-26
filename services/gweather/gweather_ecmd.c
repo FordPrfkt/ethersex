@@ -31,21 +31,37 @@
 #include "gweather.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-int16_t parse_cmd_gweather_command(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_update(char *cmd, char *output, uint16_t len)
 {
+  debug_printf("gWeather: update");
   return gweather_update(cmd, output, len);
 }
 
-int16_t parse_cmd_gweather_init(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_city(char *cmd, char *output, uint16_t len)
 {
-  return gweather_init();
+  if (len > 0){
+    while (*cmd == ' ')
+        cmd++;
+
+    //sprintf(gweather_city, "%s", *cmd);
+
+    if (len > GWEATHER_CITYSIZE)
+      return ECMD_ERR_PARSE_ERROR;
+
+    #ifdef GWEATHER_EEPROM_SUPPORT
+      eeprom_save(gweather_city, gweather_city, GWEATHER_CITYSIZE);
+      eeprom_update_chksum();
+    #endif
+  }
+
+  return ECMD_FINAL(snprintf_P(output, GWEATHER_CITYSIZE, gweather_city));
 }
 
 /*
 -- Ethersex META --
-block([[Google_Weather]])
-ecmd_feature(gweather_command, "gweather ",, Manually call application sample commands)
-ecmd_feature(parse_cmd_gweather_init, "gweather_init",, Manually call application sample init method)
+block(Google_Weather)
+ecmd_feature(update, "weather update",, gWeather update)
+ecmd_feature(city, "weather city", CITYNAME, gWeather set CITYNAME)
 */
 
 /* EOF */

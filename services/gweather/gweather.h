@@ -25,16 +25,15 @@
 #define GWEATHER_CITYSIZE 16
 char gweather_city[GWEATHER_CITYSIZE];
 
-int16_t
-gweather_onrequest(char *cmd, char *output, uint16_t len);
-
-int16_t
-gweather_init(void);
+int16_t gweather_onrequest(char *cmd, char *output, uint16_t len);
+int16_t gweather_update(char *cmd, char *output, uint16_t len);
+void gweather_init(void);
+uint8_t gweather_parse(void);
 
 #include "config.h"
 #ifdef DEBUG_GWEATHER
 # include "core/debug.h"
-# define GWEATHERDEBUG(a...)  debug_printf("gWeather: " a)
+# define GWEATHERDEBUG(a...)  debug_printf("LCD: %s", a)
 #else
 # define GWEATHERDEBUG(a...)
 #endif
