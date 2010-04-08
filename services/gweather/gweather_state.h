@@ -23,23 +23,37 @@
 #define HAVE_GWEATHER_STATE_H
 
 enum {
-    GWEATHER_INIT,
-    GWEATHER_OPEN_CONN,
+    GWEATHER_CONNECT,
     GWEATHER_SEND_REQUEST,
     GWEATHER_WAIT_RESPONSE,
-    GWEATHER_RECEIVE,
-    GWEATHER_CLOSE_CONN
+    GWEATHER_RECEIVE
+};
+
+enum {
+	PARSER_WAIT_START,
+	PARSER_WAIT_TAG,
+	PARSER_IN_FORECAST,
+	PARSER_IN_CURRENTCOND,
+	PARSER_IN_FORECASTCOND,
+	PARSER_DONE
+};
+
+enum {
+	ELEMPARSER_WAIT_BEGIN,
+	ELEMPARSER_IN_ELEMENT,
+	ELEMPARSER_DONE
 };
 
 #include <inttypes.h>
 #include "protocols/ecmd/via_tcp/ecmd_state.h"
 
 struct gweather_connection_state_t {
-    uint8_t stage;
-
-    char outbuf[ECMD_OUTPUTBUF_LENGTH];
+	uint8_t stage_e;
+    uint8_t parserState_e;
+    uint8_t elementParserState_e;
+	uint8_t elemPos_ui8;
+	uint8_t fcPos_ui8;
 };
 
 #endif  /* HAVE_GWEATHER_STATE_H */
 /* EOF */
-

@@ -22,20 +22,41 @@
 #ifndef HAVE_GWEATHER_H
 #define HAVE_GWEATHER_H
 
+#include <stdbool.h>
+
+#define FC_NUM_ELEM 4
 #define GWEATHER_CITYSIZE 16
-char gweather_city[GWEATHER_CITYSIZE];
+
+typedef struct
+{
+	char dayOfWeek_ac[4];
+	char lowTemp_ac[5];
+	char highTemp_ac[5];
+	char condition_ac[21];
+} gWeatherForecast_t;
+
+char city_ac[31];
+char date_ac[11];
+char condition_ac[21];
+char temperature_ac[5];
+char humidity_ac[21];
+char wind_ac[51];
+gWeatherForecast_t forecast_as[FC_NUM_ELEM];
+char currentElement_ac[80];
+char gweatherCity_ac[GWEATHER_CITYSIZE];
 
 int16_t gweather_onrequest(char *cmd, char *output, uint16_t len);
-int16_t gweather_update(char *cmd, char *output, uint16_t len);
-void gweather_init(void);
-uint8_t gweather_parse(void);
+int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
+void gweatherInit_v(void);
+bool gweatherParse_b(char* data_pc, uint16_t len_ui16);
+bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16);
 
 #include "config.h"
 #ifdef DEBUG_GWEATHER
-# include "core/debug.h"
-# define GWEATHERDEBUG(a...)  debug_printf("LCD: %s", a)
+  #include "core/debug.h"
+  #define GWEATHERDEBUG(a...)  debug_printf("gWeather: "a);
 #else
-# define GWEATHERDEBUG(a...)
+  #define GWEATHERDEBUG(a...)
 #endif
 
 #endif  /* HAVE_GWEATHER_H */
