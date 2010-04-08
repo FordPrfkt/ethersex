@@ -33,28 +33,17 @@
 
 int16_t parse_cmd_update(char *cmd, char *output, uint16_t len)
 {
-  debug_printf("gWeather: update");
-  return gweather_update(cmd, output, len);
+  return gweatherUpdate_i16(cmd, output, len);
 }
 
 int16_t parse_cmd_city(char *cmd, char *output, uint16_t len)
 {
-  if (len > 0){
-    while (*cmd == ' ')
-        cmd++;
+   if (*cmd == '\0')
+   {
+	   return ECMD_FINAL(snprintf_P(output, len, PSTR("%s"), gweatherCity_ac));
+   }
 
-    //sprintf(gweather_city, "%s", *cmd);
-
-    if (len > GWEATHER_CITYSIZE)
-      return ECMD_ERR_PARSE_ERROR;
-
-    #ifdef GWEATHER_EEPROM_SUPPORT
-      eeprom_save(gweather_city, gweather_city, GWEATHER_CITYSIZE);
-      eeprom_update_chksum();
-    #endif
-  }
-
-  return ECMD_FINAL(snprintf_P(output, GWEATHER_CITYSIZE, gweather_city));
+   return gweatherSetCity_b(cmd, len) == true ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
 }
 
 /*
