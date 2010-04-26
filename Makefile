@@ -87,6 +87,7 @@ SUBDIRS += services/httpd
 SUBDIRS += services/jabber
 SUBDIRS += services/ntp
 SUBDIRS += services/wol
+SUBDIRS += services/motd
 SUBDIRS += services/moodlight
 SUBDIRS += services/stella
 SUBDIRS += services/tftp
@@ -97,6 +98,7 @@ SUBDIRS += services/vnc
 SUBDIRS += services/watchasync
 SUBDIRS += services/curtain
 SUBDIRS += services/gweather
+SUBDIRS += services/glcdmenu
 
 rootbuild=t
 
