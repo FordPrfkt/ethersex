@@ -32,6 +32,9 @@
 #include "protocols/ecmd/parser.h"
 #include "protocols/ecmd/ecmd-base.h"
 
+#include "../glcdmenu/glcdmenu.h"
+#include "../glcdmenu/menu-interpreter/menu-interpreter-config.h"
+
 #ifndef DNS_SUPPORT
 #error "gWeather needs DNS support"
 #endif
@@ -73,15 +76,19 @@ bool gweatherGetAttribute_b(char* inStr_pc, char* outStr_pc, uint8_t len_ui8)
 	pos2 = strrchr(inStr_pc, '"');
 
 	/* Text found ? */
-	if (pos1 != 0 && pos2 != 0 && pos2 > pos1)
+	if (pos1 != 0 && pos2 != 0 && pos2 > pos1 && len_ui8 > 0)
 	{
 		/* Copy text */
 		size_ui8 = (pos2 - pos1) - 1;
 
-		if (size_ui8 > len_ui8)
-			size_ui8 = len_ui8;
-		memcpy(outStr_pc, pos1 + 1, size_ui8);
-		outStr_pc[size_ui8] = 0;
+		if (size_ui8 >= len_ui8)
+			size_ui8 = len_ui8 - 1;
+
+		if (size_ui8 > 0)
+		{
+			memcpy(outStr_pc, pos1 + 1, size_ui8);
+			outStr_pc[size_ui8 + 1] = 0;
+		}
 	}
 	else
 	{
@@ -429,6 +436,7 @@ static void gweatherMain_v(void)
 	{
 		GWEATHERDEBUG("connection closed\n");
 		gweather_conn = NULL;
+		glcdmenuRedraw();
 	}
 
 	if (uip_connected() && STATE->stage_e == GWEATHER_CONNECT)
@@ -465,6 +473,28 @@ static void gweatherMain_v(void)
 		memset(temperature_ac, 0, sizeof(temperature_ac));
 		memset(humidity_ac, 0, sizeof(humidity_ac));
 		memset(wind_ac, 0, sizeof(wind_ac));
+		glcdmenuSetString(MENU_TEXT_W_CITY, (unsigned char*)city_ac);
+		glcdmenuSetString(MENU_TEXT_W_DATE, (unsigned char*)date_ac);
+		glcdmenuSetString(MENU_TEXT_W_WIND, (unsigned char*)wind_ac);
+		glcdmenuSetString(MENU_TEXT_W_COND, (unsigned char*)condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_TEMP, (unsigned char*)temperature_ac);
+		glcdmenuSetString(MENU_TEXT_W_HUMID, (unsigned char*)humidity_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW1, (unsigned char*)forecast_as[0].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW2, (unsigned char*)forecast_as[1].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW3, (unsigned char*)forecast_as[2].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW4, (unsigned char*)forecast_as[3].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT1, (unsigned char*)forecast_as[0].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT2, (unsigned char*)forecast_as[0].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT3, (unsigned char*)forecast_as[1].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT4, (unsigned char*)forecast_as[1].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT5, (unsigned char*)forecast_as[2].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT6, (unsigned char*)forecast_as[2].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT7, (unsigned char*)forecast_as[3].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT8, (unsigned char*)forecast_as[3].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FC1, (unsigned char*)forecast_as[1].condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_FC3, (unsigned char*)forecast_as[2].condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_FC4, (unsigned char*)forecast_as[3].condition_ac);
+
 	}
 
 	if (uip_newdata())
