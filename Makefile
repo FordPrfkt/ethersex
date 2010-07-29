@@ -42,6 +42,7 @@ SUBDIRS += hardware/storage/dataflash
 SUBDIRS += hardware/storage/sd_reader
 SUBDIRS += hardware/zacwire
 SUBDIRS += hardware/ultrasonic
+SUBDIRS += hardware/hbridge
 SUBDIRS += protocols/artnet
 SUBDIRS += protocols/bootp
 SUBDIRS += protocols/dmx
@@ -125,7 +126,7 @@ else
 all: compile-$(TARGET)
 	@echo "=======The ethersex project========"
 	@echo "Compiled for: $(MCU) at $(FREQ)Hz"
-	@${TOPDIR}/scripts/size $(TARGET) $(MCU)
+	@$(CONFIG_SHELL) ${TOPDIR}/scripts/size $(TARGET) $(MCU)
 	@echo "==================================="
 endif
 .PHONY: all
@@ -169,10 +170,10 @@ $(ECMD_PARSER_SUPPORT)_META_SRC += protocols/ecmd/ecmd_defs.m4 ${named_pin_simpl
 y_META_SRC += $(y_NP_SIMPLE_META_SRC)
 
 meta.c: $(y_META_SRC)
-	@m4 `scripts/m4-defines` $^ > $@
+	$(M4) `scripts/m4-defines` $^ > $@
 
 meta.h: scripts/meta_header_magic.m4 meta.m4
-	@m4 `scripts/m4-defines` $^ > $@
+	$(M4) `scripts/m4-defines` $^ > $@
 
 ##############################################################################
 
@@ -226,7 +227,7 @@ INLINE_FILES :=
 endif
 
 embed/%: embed/%.cpp
-	@if ! avr-cpp -DF_CPU=$(FREQ) -I$(TOPDIR) $< 2> /dev/null > $@.tmp; \
+	@if ! avr-cpp -DF_CPU=$(FREQ) -I$(TOPDIR) -include autoconf.h $< 2> /dev/null > $@.tmp; \
 		then $(RM) $@; echo "--> Don't include $@ ($<)"; \
 	else $(SED) '/^$$/d; /^#[^#]/d' <$@.tmp > $@; \
 	  echo "--> Include $@ ($<)"; fi
@@ -234,7 +235,7 @@ embed/%: embed/%.cpp
 
 
 embed/%: embed/%.m4
-	@if ! m4 `scripts/m4-defines` $< > $@; \
+	@if ! $(M4) `scripts/m4-defines` $< > $@; \
 	  then $(RM) $@; echo "--> Don't include $@ ($<)";\
 		else echo "--> Include $@ ($<)";	fi
 
@@ -247,7 +248,7 @@ embed/%: embed/%.sh
 	$(OBJCOPY) -O binary -R .eeprom $< $@
 ifeq ($(VFS_INLINE_SUPPORT),y)
 	@$(MAKE) -C core/vfs vfs-concat TOPDIR=../.. no_deps=t
-	@core/vfs/do-embed $(INLINE_FILES)
+	$(CONFIG_SHELL) core/vfs/do-embed $(INLINE_FILES)
 endif
 
 ##############################################################################
@@ -263,7 +264,8 @@ endif
 
 
 ##############################################################################
-CONFIG_SHELL := $(shell if [ x"$$OSTYPE" = x"darwin10.0" ]; then echo /opt/local/bin/bash; \
+### Special case for MacOS X (darwin10.0) and FreeBSD
+CONFIG_SHELL := $(shell if [ x"$$OSTYPE" = x"darwin10.0" ] || [ x"$$OSTYPE" = x"FreeBSD" ]; then echo /opt/local/bin/bash; \
           elif [ -x "$$BASH" ]; then echo $$BASH; \
           elif [ -x /bin/bash ]; then echo /bin/bash; \
           elif [ -x /usr/local/bin/bash ]; then echo /usr/local/bin/bash; \
@@ -323,7 +325,7 @@ PINNING_FILES=pinning/internals/header.m4 \
 	$(wildcard pinning/internals/hackery_$(MCU).m4) \
 	$(wildcard pinning/hardware/$(HARDWARE).m4) pinning/internals/footer.m4
 pinning.c: $(PINNING_FILES) autoconf.h
-	@m4 -I$(TOPDIR)/pinning `scripts/m4-defines` $(PINNING_FILES) > $@
+	$(M4) -I$(TOPDIR)/pinning `scripts/m4-defines` $(PINNING_FILES) > $@
 
 
 ##############################################################################

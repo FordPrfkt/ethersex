@@ -25,6 +25,7 @@
 #define _CLOCK_H
 
 #include <inttypes.h>
+#include "config.h"
 
 #if defined(atmega128)
 
@@ -37,6 +38,7 @@
 #define CLOCK_TIMER_OVERFLOW TOV0
 #define CLOCK_SIG SIG_OVERFLOW0
 #define CLOCK_SELECT_2 CS02
+#define CLOCK_SELECT_1 CS01
 #define CLOCK_SELECT_0 CS00
 #define CLOCK_TIMER_NBUSY TCN0UB
 #define CLOCK_TIMER_RBUSY TCR0UB
@@ -53,6 +55,7 @@
 #define CLOCK_TIMER_OVERFLOW TOV2
 #define CLOCK_SIG SIG_OVERFLOW2
 #define CLOCK_SELECT_2 CS22
+#define CLOCK_SELECT_1 CS21
 #define CLOCK_SELECT_0 CS20
 #define CLOCK_TIMER_NBUSY TCN2UB
 #ifdef TCR2BUB
@@ -111,6 +114,7 @@ uint16_t clock_last_ntp(void);
 uint32_t clock_get_startup(void);
 
 /* the actual time */
+void clock_set_time_raw(uint32_t new_sync_timestamp);
 void clock_set_time(uint32_t new_sync_timestamp);
 
 /** convert time in timestamp to a datetime struct */
@@ -120,6 +124,10 @@ void clock_localtime(struct clock_datetime_t *d, uint32_t timestamp);
 /** convert current time to a datetime struct */
 #define clock_current_datetime(d) clock_datetime(d, clock_get_time())
 #define clock_current_localtime(d) clock_localtime(d, clock_get_time())
+
+#if TIMEZONE == TIMEZONE_CEST
+int8_t last_sunday_in_month(uint8_t day, uint8_t dow);
+#endif
 
 /** convert a datetime struct to timestamp  */
 uint32_t clock_utc2timestamp(struct clock_datetime_t *d, uint8_t cest);

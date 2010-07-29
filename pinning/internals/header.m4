@@ -37,6 +37,7 @@ define(`port_mask_C', 0)
 define(`port_mask_D', 0)
 define(`port_mask_E', 0)
 define(`port_mask_F', 0)
+define(`port_mask_G', 0)
 
 define(`ddr_mask_A', 0)
 define(`ddr_mask_B', 0)
@@ -44,6 +45,7 @@ define(`ddr_mask_C', 0)
 define(`ddr_mask_D', 0)
 define(`ddr_mask_E', 0)
 define(`ddr_mask_F', 0)
+define(`ddr_mask_G', 0)
 
 dnl forloop-implementation from gnu m4 example scripts ...
 # forloop(var, from, to, stmt) - simple version
@@ -193,6 +195,21 @@ pin(MOTORCURTAIN_PIN, format(`P%s%d', pinname, itr))
 #define MOCU_SENSORS_DDR_PORT format(DDR%s, pinname)
 #define MOCU_SENSORS_PIN_PORT format(PIN%s, pinname)
 ')
+
+define(`STELLA_USE_TIMER', `dnl
+
+/* Configure stella timer*/
+#define STELLA_PRESCALER   		format(_TCCR%s_PRESCALE, $1)
+#define STELLA_TIMSK       		_TIMSK_TIMER$1
+#define STELLA_CS0         		format(CS%s0, $1)
+#define STELLA_CS2         		format(CS%s2, $1)
+#define STELLA_TOIE        		TOIE$1
+#define STELLA_COMPARE_IE  		_OUTPUT_COMPARE_IE$1
+#define STELLA_COMPARE_VECTOR	_VECTOR_OUTPUT_COMPARE$1
+#define STELLA_OVERFLOW_VECTOR  _VECTOR_OVERFLOW$1
+#define STELLA_COMPARE_REG 		_OUTPUT_COMPARE_REG$1
+')
+
 
 define(`STELLA_PORT1_RANGE', `dnl
 define(`pinname', translit(substr(`$1', 1, 1), `a-z', `A-Z'))dnl

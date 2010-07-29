@@ -2,6 +2,7 @@
  * Copyright (c) by Alexander Neumann <alexander@bumpern.de>
  * Copyright (c) 2007 by Stefan Siegl <stesie@brokenpipe.de>
  * Copyright (c) 2007 by Christian Dietrich <stettberger@dokucode.de>
+ * Copyright (c) 2010 by Peter Marschall <peter@adpm.de>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License (either version 2 or
@@ -30,34 +31,25 @@
 
 #include "protocols/ecmd/ecmd-base.h"
 
-int16_t parse_cmd_settime(char *cmd, char *output, uint16_t len)
-{
-  uint32_t nst = strtoul(cmd, NULL, 10);
-  if(!nst) return ECMD_ERR_PARSE_ERROR;
-  clock_set_time(nst);
-  return ECMD_FINAL_OK;
-}
-
 int16_t parse_cmd_time(char *cmd, char *output, uint16_t len)
 {
-  return ECMD_FINAL(snprintf_P(output, len, PSTR("%lu"), clock_get_time()));
-}
+  while (*cmd == ' ')
+    cmd++;
 
-int16_t parse_cmd_date(char *cmd, char *output, uint16_t len)
-{
-  char *weekdays = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
-  struct clock_datetime_t date;
-  clock_current_localtime(&date);
+  if (*cmd == '\0')
+    return ECMD_FINAL(snprintf_P(output, len, PSTR("%lu"), clock_get_time()));
+  else {
+    uint32_t newtime = strtoul(cmd, NULL, 10);
 
-  return ECMD_FINAL(snprintf_P(output, len, PSTR("%.2d:%.2d:%.2d %.2d.%.2d.%.2d %s"),
-                    date.hour, date.min, date.sec, date.day, date.month, date.year % 100,
-                    weekdays + date.dow * 4));
+    if (!newtime)
+      return ECMD_ERR_PARSE_ERROR;
+    clock_set_time(newtime);
+    return ECMD_FINAL_OK;
+  }
 }
 
 /*
   -- Ethersex META --
   block([[Am_Puls_der_Zeit|Clock]])
-  ecmd_feature(time, "time",, Display the current time in seconds since January 1st 1970.)
-  ecmd_feature(date, "date",, Display the current date.)
-  ecmd_feature(settime, "settime ", UNIXTIME, Set the current time (provide unix timestamp))
+  ecmd_feature(time, "time",[UNIXTIME], Display/Set the current time in seconds since January 1st 1970.)
 */

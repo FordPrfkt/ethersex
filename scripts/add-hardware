@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/sh
 
 usage() {
   echo "Usage:"
@@ -154,7 +154,8 @@ template $USB_SUPPORT << FNORD
 FNORD
 
 template $STELLA_SUPPORT << FNORD
-  STELLA_PORT1_RANGE(PC0,PC7)
+  STELLA_USE_TIMER(2)
+  STELLA_PORT1_RANGE(PC0,PC7) 
 FNORD
 
 template $MOTORCURTAIN_SUPPORT << FNORD
@@ -206,13 +207,19 @@ FNORD
 
 template $HD44780_SUPPORT << FNORD
     pin(HD44780_RS, PA0)
-    /* Uncomment if you wirded RW Pin and/or want to use readback support */
-    // pin(HD44780_RW, PA1)
-    pin(HD44780_EN, PA2)
+    pin(HD44780_EN1, PA2)
     pin(HD44780_D4, PA3)
     pin(HD44780_D5, PA4)
     pin(HD44780_D6, PA5)
     pin(HD44780_D7, PA6)
+FNORD
+
+template $HD44780_READBACK << FNORD
+    pin(HD44780_RW, PA1)
+FNORD
+
+template $HD44780_MULTIENSUPPORT << FNORD
+    pin(HD44780_EN2, PA7)
 FNORD
 
 template $S1D13305_SUPPORT << FNORD
@@ -230,6 +237,26 @@ FNORD
 template $CW_SUPPORT << FNORD
   /* morse support */
   pin(CW, PC6, OUTPUT)
+FNORD
+
+template $CH_A_PWM_GENERAL_SUPPORT << FNORD
+  /* PWM Channel A support */
+  pin(CHANNEL_A_PWM, PD5, OUTPUT)
+FNORD
+
+template $CH_B_PWM_GENERAL_SUPPORT << FNORD
+  /* PWM Channel B support */
+  pin(CHANNEL_B_PWM, PD4, OUTPUT)
+FNORD
+
+template $CH_C_PWM_GENERAL_SUPPORT << FNORD
+  /* PWM Channel C support */
+  pin(CHANNEL_C_PWM, PB7, OUTPUT)
+FNORD
+
+template $PWM_WAV_SUPPORT << FNORD
+  /* PWM WAV SUPPORT */
+  pin(SOUND, PD7, OUTPUT)
 FNORD
 
 template $SRF05_SUPPORT << FNORD
@@ -395,7 +422,7 @@ grep -v -e "^HARDWARE=" -e "^$HARDWARE=y" .config > .config.new
 echo -e "HARDWARE=$hw\n$hw=y" >> .config.new
 mv -f .config.new .config
 
-function l_editor() {
+l_editor() {
   echo "launching editor for $1 ..."
   if [ -n "$EDITOR" ]; then
     $EDITOR $1

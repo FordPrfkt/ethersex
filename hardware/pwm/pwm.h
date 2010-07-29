@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2009 by Christian Dietrich <stettberger@dokucode.de>
- * Copyright (c) 2009 by Stefan Riepenhausen <rhn@gmx.net>
+ * Copyright (c) 2010 by Stefan Riepenhausen <rhn@gmx.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,30 +19,18 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#include <avr/io.h>
-#include <avr/pgmspace.h>
+#ifndef HAVE_PWM_GENERAL_H
+#define HAVE_PWM_GENERAL_H
 
-#include "config.h"
-#include "core/debug.h"
+#define PWM_MIN_VALUE 0xFF
+#define PWM_MAX_VALUE 0x00
 
-#include "protocols/ecmd/ecmd-base.h"
+int16_t parse_cmd_pwm_fade_command(char *cmd, char *output, uint16_t len);
 
-#ifdef PWM_WAV_SUPPORT
+void
+pwm_init();
 
-#include "pwm_wav.h"
+void
+pwm_periodic();
 
-int16_t
-parse_cmd_pwm_wav_play(char *cmd, char *output, uint16_t len)
-{
-    pwm_wav_init();
-    return ECMD_FINAL_OK;
-}
-
-int16_t
-parse_cmd_pwm_wav_stop(char *cmd, char *output, uint16_t len)
-{
-    pwm_stop();
-    return ECMD_FINAL_OK;
-}
-
-#endif  /* PWM_SUPPORT */
+#endif  /* HAVE_PWM_GENERAL_H */
