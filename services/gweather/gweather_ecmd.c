@@ -50,7 +50,7 @@ int16_t parse_cmd_city(char *cmd, char *output, uint16_t len)
 -- Ethersex META --
 block(Google_Weather)
 ecmd_feature(update, "weather update",, gWeather update)
-ecmd_feature(city, "weather city", CITYNAME, gWeather set CITYNAME)
+ecmd_feature(city, "weather city ", CITYNAME, gWeather set CITYNAME)
 */
 
 /* EOF */

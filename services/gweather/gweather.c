@@ -64,29 +64,46 @@ static uip_conn_t *gweather_conn;
 static void gweatherQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
 static void gweatherMain_v(void);
 
-bool gweatherGetAttribute_b(char* inStr_pc, char* outStr_pc, uint8_t len_ui8)
+bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc,
+		uint8_t outLen_ui8)
 {
-	char* pos1 = 0;
-	char* pos2 = 0;
+	int16_t pos1 = -1;
+	int16_t pos2 = -1;
 	uint8_t size_ui8 = 0;
-	char str = '"';
+	uint8_t seekPos_ui8 = 0;
 
 	/* Seek for text within "" */
-	pos1 = strpbrk(inStr_pc, &str);
-	pos2 = strrchr(inStr_pc, '"');
+	while (++seekPos_ui8 < inLen_ui8)
+	{
+		if (inStr_pc[seekPos_ui8] == '"')
+		{
+			pos1 = seekPos_ui8;
+			break;
+		}
+	}
+
+	seekPos_ui8 = inLen_ui8;
+	while (seekPos_ui8-- > 0)
+	{
+		if (inStr_pc[seekPos_ui8] == '"')
+		{
+			pos2 = seekPos_ui8;
+			break;
+		}
+	}
 
 	/* Text found ? */
-	if (pos1 != 0 && pos2 != 0 && pos2 > pos1 && len_ui8 > 0)
+	if ((pos1 != -1) && (pos2 != -1) && (pos2 > pos1) && (outLen_ui8 > 0))
 	{
 		/* Copy text */
 		size_ui8 = (pos2 - pos1) - 1;
 
-		if (size_ui8 >= len_ui8)
-			size_ui8 = len_ui8 - 1;
+		if (size_ui8 >= outLen_ui8)
+			size_ui8 = outLen_ui8 - 1;
 
 		if (size_ui8 > 0)
 		{
-			memcpy(outStr_pc, pos1 + 1, size_ui8);
+			memcpy(outStr_pc, inStr_pc + (pos1 + 1), size_ui8);
 			outStr_pc[size_ui8 + 1] = 0;
 		}
 	}
@@ -208,13 +225,13 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* City tag */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							city_ac, sizeof(city_ac));
+							STATE->elemPos_ui8, city_ac, sizeof(city_ac));
 				}
 				else if (strstr_P(currentElement_ac, FORECAST_DATE_TAG) != 0)
 				{
 					/* Condition tag */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							date_ac, sizeof(date_ac));
+							STATE->elemPos_ui8, date_ac, sizeof(date_ac));
 				}
 				else if (strstr_P(currentElement_ac, FORECAST_TAG) != 0)
 				{
@@ -233,25 +250,28 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 					/* Wind condition. This must be before the "Condtion"
 					 * test */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							wind_ac, sizeof(wind_ac));
+							STATE->elemPos_ui8, wind_ac, sizeof(wind_ac));
 				}
 				else if (strstr_P(currentElement_ac, CONDITION_TAG) != 0)
 				{
 					/* Condtion */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							condition_ac, sizeof(condition_ac));
+							STATE->elemPos_ui8, condition_ac,
+							sizeof(condition_ac));
 				}
 				else if (strstr_P(currentElement_ac, TEMP_TAG) != 0)
 				{
 					/* Temperature */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							temperature_ac, sizeof(temperature_ac));
+							STATE->elemPos_ui8, temperature_ac,
+							sizeof(temperature_ac));
 				}
 				else if (strstr_P(currentElement_ac, HUMIDITY_TAG) != 0)
 				{
 					/* Humidity */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							humidity_ac, sizeof(humidity_ac));
+							STATE->elemPos_ui8, humidity_ac,
+							sizeof(humidity_ac));
 				}
 				else if (strstr_P(currentElement_ac, CURRENT_COND_TAG) != 0)
 				{
@@ -269,6 +289,7 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* Day of week */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
+							STATE->elemPos_ui8,
 							forecast_as[STATE->fcPos_ui8].dayOfWeek_ac,
 							sizeof(forecast_as[STATE->fcPos_ui8].dayOfWeek_ac));
 				}
@@ -276,6 +297,7 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* Low temperature */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
+							STATE->elemPos_ui8,
 							forecast_as[STATE->fcPos_ui8].lowTemp_ac,
 							sizeof(forecast_as[STATE->fcPos_ui8].lowTemp_ac));
 				}
@@ -283,6 +305,7 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* High temperature */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
+							STATE->elemPos_ui8,
 							forecast_as[STATE->fcPos_ui8].highTemp_ac,
 							sizeof(forecast_as[STATE->fcPos_ui8].highTemp_ac));
 				}
@@ -290,6 +313,7 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* Weather condition */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
+							STATE->elemPos_ui8,
 							forecast_as[STATE->fcPos_ui8].condition_ac,
 							sizeof(forecast_as[STATE->fcPos_ui8].condition_ac));
 				}
@@ -473,27 +497,42 @@ static void gweatherMain_v(void)
 		memset(temperature_ac, 0, sizeof(temperature_ac));
 		memset(humidity_ac, 0, sizeof(humidity_ac));
 		memset(wind_ac, 0, sizeof(wind_ac));
-		glcdmenuSetString(MENU_TEXT_W_CITY, (unsigned char*)city_ac);
-		glcdmenuSetString(MENU_TEXT_W_DATE, (unsigned char*)date_ac);
-		glcdmenuSetString(MENU_TEXT_W_WIND, (unsigned char*)wind_ac);
-		glcdmenuSetString(MENU_TEXT_W_COND, (unsigned char*)condition_ac);
-		glcdmenuSetString(MENU_TEXT_W_TEMP, (unsigned char*)temperature_ac);
-		glcdmenuSetString(MENU_TEXT_W_HUMID, (unsigned char*)humidity_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW1, (unsigned char*)forecast_as[0].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW2, (unsigned char*)forecast_as[1].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW3, (unsigned char*)forecast_as[2].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW4, (unsigned char*)forecast_as[3].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT1, (unsigned char*)forecast_as[0].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT2, (unsigned char*)forecast_as[0].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT3, (unsigned char*)forecast_as[1].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT4, (unsigned char*)forecast_as[1].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT5, (unsigned char*)forecast_as[2].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT6, (unsigned char*)forecast_as[2].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT7, (unsigned char*)forecast_as[3].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT8, (unsigned char*)forecast_as[3].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FC1, (unsigned char*)forecast_as[1].condition_ac);
-		glcdmenuSetString(MENU_TEXT_W_FC3, (unsigned char*)forecast_as[2].condition_ac);
-		glcdmenuSetString(MENU_TEXT_W_FC4, (unsigned char*)forecast_as[3].condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_CITY, (unsigned char*) city_ac);
+		glcdmenuSetString(MENU_TEXT_W_DATE, (unsigned char*) date_ac);
+		glcdmenuSetString(MENU_TEXT_W_WIND, (unsigned char*) wind_ac);
+		glcdmenuSetString(MENU_TEXT_W_COND, (unsigned char*) condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_TEMP, (unsigned char*) temperature_ac);
+		glcdmenuSetString(MENU_TEXT_W_HUMID, (unsigned char*) humidity_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW1,
+				(unsigned char*) forecast_as[0].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW2,
+				(unsigned char*) forecast_as[1].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW3,
+				(unsigned char*) forecast_as[2].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_DOW4,
+				(unsigned char*) forecast_as[3].dayOfWeek_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT1,
+				(unsigned char*) forecast_as[0].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT2,
+				(unsigned char*) forecast_as[0].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT3,
+				(unsigned char*) forecast_as[1].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT4,
+				(unsigned char*) forecast_as[1].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT5,
+				(unsigned char*) forecast_as[2].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT6,
+				(unsigned char*) forecast_as[2].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT7,
+				(unsigned char*) forecast_as[3].lowTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FT8,
+				(unsigned char*) forecast_as[3].highTemp_ac);
+		glcdmenuSetString(MENU_TEXT_W_FC1,
+				(unsigned char*) forecast_as[1].condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_FC3,
+				(unsigned char*) forecast_as[2].condition_ac);
+		glcdmenuSetString(MENU_TEXT_W_FC4,
+				(unsigned char*) forecast_as[3].condition_ac);
 
 	}
 

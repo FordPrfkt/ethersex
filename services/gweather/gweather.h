@@ -48,7 +48,7 @@ char gweatherCity_ac[GWEATHER_CITYSIZE];
 int16_t gweather_onrequest(char *cmd, char *output, uint16_t len);
 int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
 void gweatherInit_v(void);
-bool gweatherGetAttribute_b(char* inStr_pc, char* outStr_pc, uint8_t len_ui8);
+bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
 bool gweatherParse_b(char* data_pc, uint16_t len_ui16);
 bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16);
 
