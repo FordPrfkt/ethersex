@@ -99,6 +99,7 @@ SUBDIRS += services/vnc
 SUBDIRS += services/watchasync
 SUBDIRS += services/curtain
 SUBDIRS += services/glcdmenu
+SUBDIRS += services/gcalendar
 
 rootbuild=t
 
