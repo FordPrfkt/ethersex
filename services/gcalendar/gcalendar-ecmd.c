@@ -28,28 +28,27 @@
 #include <util/delay.h>
 
 #include "config.h"
-#include "appsample.h"
+#include "gcalendar.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-int16_t parse_cmd_app_sample_command(char *cmd, char *output, uint16_t len) 
+int16_t parse_cmd_update(char *cmd, char *output, uint16_t len)
 {
-  return app_sample_onrequest(cmd, output, len);
+  return gcalendarUpdate_i16(cmd, output, len);
 }
 
-int16_t parse_cmd_app_sample_init(char *cmd, char *output, uint16_t len) 
+int16_t parse_cmd_login(char *cmd, char *output, uint16_t len)
 {
-  return app_sample_init();
-}
+   if (*cmd == '\0')
+   {
+	   return ECMD_FINAL(snprintf_P(output, len, PSTR("%s"), gCalendarLogin_ac));
+   }
 
-int16_t parse_cmd_app_sample_periodic(char *cmd, char *output, uint16_t len) 
-{
-  return app_sample_periodic();
+   return gcalendarSetLogin_b(cmd, len) == true ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
 }
 
 /*
 -- Ethersex META --
-block([[Application_Sample]])
-ecmd_feature(app_sample_command, "sample ",, Manually call application sample commands)
-ecmd_feature(app_sample_init, "sample_init",, Manually call application sample init method)
-ecmd_feature(app_sample_periodic, "sample_periodic",, Manually call application sample periodic method)
+block(Google_Calendar)
+ecmd_feature(update, "calendar update",, gCalendar update)
+ecmd_feature(login, "weather login ", LOGIN, gCalendar set LOGIN)
 */
