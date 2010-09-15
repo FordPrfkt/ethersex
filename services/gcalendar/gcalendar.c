@@ -42,10 +42,10 @@
 #define STATE (&uip_conn->appstate.gcalendar)
 #define GCALENDAR_HOST "www.google.de"
 
-static const char PROGMEM FEED_TAG = "feed";
-static const char PROGMEM ENTRY_TAG = "entry";
-static const char PROGMEM TITLE_TAG = "title type='text'";
-static const char PROGMEM WHEN_TAG = "gd:when";
+static const char PROGMEM FEED_TAG[] = "feed";
+static const char PROGMEM ENTRY_TAG[] = "entry";
+static const char PROGMEM TITLE_TAG[] = "title type='text'";
+static const char PROGMEM WHEN_TAG[] = "gd:when";
 
 static const char PROGMEM REQUEST[] =
 "GET /calendar/feeds/%s/full HTTP/1.1\nHost: "GCALENDAR_HOST"\nConnection: Close\r\n\r\n";
@@ -55,10 +55,14 @@ static uip_conn_t *gcalendar_conn;
 static void gcalendarQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
 static void gcalendarMain_v(void);
 
+char currentElement_ac[80];
+char text_ac[120];
+uint8_t textPos_ui8 = 0;
+
 bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8)
 {
-	uint8_t pos1 = -1;
-	uint8_t pos2 = -1;
+	int8_t pos1_si8 = -1;
+	int8_t pos2_si8 = -1;
 	uint8_t size_ui8 = 0;
 	uint8_t seekPos_ui8 = 0;
 
@@ -67,7 +71,7 @@ bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, 
 	{
 		if (inStr_pc[seekPos_ui8] == '"')
 		{
-			pos1 = seekPos_ui8;
+			pos1_si8 = seekPos_ui8;
 			break;
 		}
 	}
@@ -77,23 +81,23 @@ bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, 
 	{
 		if (inStr_pc[seekPos_ui8] == '"')
 		{
-			pos2 = seekPos_ui8;
+			pos2_si8 = seekPos_ui8;
 			break;
 		}
 	}
 
 	/* Text found ? */
-	if ((pos1 != -1) && (pos2 != -1) && (pos2 > pos1) && (outLen_ui8 > 0))
+	if ((pos1_si8 != -1) && (pos2_si8 != -1) && (pos2_si8 > pos1_si8) && (outLen_ui8 > 0))
 	{
 		/* Copy text */
-		size_ui8 = (pos2 - pos1) - 1;
+		size_ui8 = (pos2_si8 - pos1_si8) - 1;
 
 		if (size_ui8 >= outLen_ui8)
 			size_ui8 = outLen_ui8 - 1;
 
 		if (size_ui8 > 0)
 		{
-			memcpy(outStr_pc, inStr_pc + (pos1 + 1), size_ui8);
+			memcpy(outStr_pc, inStr_pc + (pos1_si8 + 1), size_ui8);
 			outStr_pc[size_ui8 + 1] = 0;
 		}
 	}
@@ -110,73 +114,73 @@ bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 	uint8_t pos_ui8 = 0;
 	bool result_b = false;
 
-	while (pos_ui8 < len)
+	while (pos_ui8 < len_ui16)
 	{
-		switch (elementParserState_e)
+		switch (STATE->elementParserState_e)
 		{
 			case ELEMPARSER_WAIT_BEGIN:
-			  if (buffer[pos_ui8] == '<')
+			  if (data_pc[pos_ui8] == '<')
 			  {
 				  memset(currentElement_ac, 0, sizeof(currentElement_ac));
-				  elementParserState_e = ELEMPARSER_IN_ELEMENT;
-				  elemPos_ui8 = 0;
+				  STATE->elementParserState_e = ELEMPARSER_IN_ELEMENT;
+				  STATE->elemPos_ui8 = 0;
 			  }
 			break;
 
 			case ELEMPARSER_IN_ELEMENT:
-				if (buffer[pos_ui8] != '>')
+				if (data_pc[pos_ui8] != '>')
 				{
-					if (elemPos_ui8 < sizeof(currentElement_ac))
+					if (STATE->elemPos_ui8 < sizeof(currentElement_ac))
 					{
-						currentElement_ac[elemPos_ui8] = buffer[pos_ui8];
-						elemPos_ui8++;
+						currentElement_ac[STATE->elemPos_ui8] = data_pc[pos_ui8];
+						STATE->elemPos_ui8++;
 					}
 				}
 				else
 				{
-					elementParserState_e = ELEMPARSER_DONE;
+					STATE->elementParserState_e = ELEMPARSER_DONE;
 				}
 			break;
 
 			case ELEMPARSER_GET_LABEL:
-				if (buffer[pos_ui8] != '<')
+				if (data_pc[pos_ui8] != '<')
 				{
-					if (elemPos_ui8 < sizeof(currentElement_ac))
+					if (STATE->elemPos_ui8 < sizeof(currentElement_ac))
 					{
-						currentElement_ac[elemPos_ui8] = buffer[pos_ui8];
-						elemPos_ui8++;
+						currentElement_ac[STATE->elemPos_ui8] = data_pc[pos_ui8];
+						STATE->elemPos_ui8++;
 					}
 				}
 				else
 				{
-					elementParserState_e = ELEMPARSER_DONE;
+					STATE->elementParserState_e = ELEMPARSER_DONE;
 					pos_ui8--;
 				}
 			break;
 
 			case ELEMPARSER_DONE:
-				elementParserState_e = ELEMPARSER_WAIT_BEGIN;
+				STATE->elementParserState_e = ELEMPARSER_WAIT_BEGIN;
 				pos_ui8--; // Reparse the current character;
 			break;
 		}
 
-		if (ELEMPARSER_DONE == elementParserState_e)
+		if (ELEMPARSER_DONE == STATE->elementParserState_e)
 		{
-			switch(parserState_e)
+			switch(STATE->parserState_e)
 			{
 				case PARSER_WAIT_TAG:
 				 if (strcmp(currentElement_ac, ENTRY_TAG) == 0)
 				 {
-					parserState_e = PARSER_IN_ENTRY;
+					STATE->parserState_e = PARSER_IN_ENTRY;
 //					printf("Entry Tag: %s\n", currentElement_ac);
-					fcPos_ui8 = 0;
+					STATE->fcPos_ui8 = 0;
 				 }
 				 else
 				 if (strcmp(currentElement_ac, "/feed") == 0)
 				 {
-					parserState_e = PARSER_DONE;
+					STATE->parserState_e = PARSER_DONE;
 //					printf("End Tag: %s\n", currentElement_ac);
-					fcPos_ui8 = 0;
+					STATE->fcPos_ui8 = 0;
 				 }
 				break;
 
@@ -184,10 +188,10 @@ bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 				 if (strstr(currentElement_ac, TITLE_TAG) != 0)
 				 {
 //					 printf("Ttitle Tag: %s\n", currentElement_ac);
-					 parserState_e = PARSER_IN_TITLE;
-					 elementParserState_e = ELEMPARSER_GET_LABEL;
+					 STATE->parserState_e = PARSER_IN_TITLE;
+					 STATE->elementParserState_e = ELEMPARSER_GET_LABEL;
  				     memset(currentElement_ac, 0, sizeof(currentElement_ac));
-				     elemPos_ui8 = 0;
+ 				    STATE->elemPos_ui8 = 0;
 				 }
 				 else
 				 if (strcmp(currentElement_ac, "/gd:when") == 0)
@@ -213,7 +217,7 @@ bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 				 if (strcmp(currentElement_ac, "/entry") == 0)
 				 {
 	//				printf("End entry Tag: %s\n", currentElement_ac);
-					parserState_e = PARSER_WAIT_TAG;
+					STATE->parserState_e = PARSER_WAIT_TAG;
 				 }
 				 else
 				 {
@@ -225,13 +229,13 @@ bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 				 if (strcmp(currentElement_ac, "/title") == 0)
 				 {
 		//			printf("End title Tag: %s\n", currentElement_ac);
-					parserState_e = PARSER_IN_ENTRY;
+					STATE->parserState_e = PARSER_IN_ENTRY;
 				 }
 				 else
 				 {
 //					 printf("Title: %s\n", currentElement_ac);
-					 memcpy(text_ac+textPos_ui8, currentElement_ac, elemPos_ui8);
-					 textPos_ui8 += elemPos_ui8;
+					 memcpy(text_ac+textPos_ui8, currentElement_ac, STATE->elemPos_ui8);
+					 textPos_ui8 += STATE->elemPos_ui8;
 					 text_ac[textPos_ui8] = '\n';
 					 textPos_ui8++;
 				 }
@@ -273,7 +277,7 @@ static void gcalendarQueryCB_v(char *name, uip_ipaddr_t *ipaddr)
 		GCALENDARDEBUG ("Address resolved\n");
 		gcalendar_conn = uip_connect(ipaddr, HTONS (80), gcalendarMain_v);
 
-		if (NULL != gweather_conn)
+		if (NULL != gcalendar_conn)
 		{
 			GCALENDARDEBUG ("Wait for connect\n");
 			STATE->stage_e = GCALENDAR_CONNECT;
@@ -311,14 +315,14 @@ int16_t gcalendarUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
 	if (NULL == ip_p)
 	{
 		GCALENDARDEBUG ("Resolving Address\n");
-		resolv_query(GCALENDAR_HOST, gweatherQueryCB_v);
+		resolv_query(GCALENDAR_HOST, gcalendarQueryCB_v);
 	}
 	else
 	{
 		GCALENDARDEBUG ("address already resolved\n");
-		gweather_conn = uip_connect(ip_p, HTONS(80), gweatherMain_v);
+		gcalendar_conn = uip_connect(ip_p, HTONS(80), gcalendarMain_v);
 
-		if (NULL == gweather_conn)
+		if (NULL == gcalendar_conn)
 		{
 			GCALENDARDEBUG ("no uip_conn available.\n");
 		}
@@ -339,13 +343,13 @@ static void gcalendarMain_v(void)
 	if (uip_aborted() || uip_timedout())
 	{
 		GCALENDARDEBUG ("connection aborted\n");
-		gweather_conn = NULL;
+		gcalendar_conn = NULL;
 	}
 
 	if (uip_closed())
 	{
 		GCALENDARDEBUG("connection closed\n");
-		gweather_conn = NULL;
+		gcalendar_conn = NULL;
 		glcdmenuRedraw();
 	}
 
@@ -359,13 +363,13 @@ static void gcalendarMain_v(void)
 			|| STATE->stage_e == GCALENDAR_WAIT_RESPONSE))
 	{
 		GCALENDARDEBUG("Re-Xmit\n");
-		gweatherSendRequest_v();
+		gcalendarSendRequest_v();
 		STATE->stage_e = GCALENDAR_WAIT_RESPONSE;
 	}
 
 	if (uip_poll() && (STATE->stage_e == GCALENDAR_SEND_REQUEST))
 	{
-		gweatherSendRequest_v();
+		gcalendarSendRequest_v();
 		STATE->stage_e = GCALENDAR_WAIT_RESPONSE;
 	}
 
@@ -385,7 +389,7 @@ static void gcalendarMain_v(void)
 		if (uip_len && STATE->stage_e == GCALENDAR_RECEIVE)
 		{
 			GCALENDARDEBUG("New Data\n");
-			if (gweatherParse_b(((char *) uip_appdata), uip_len) == false)
+			if (gcalendarParse_b(((char *) uip_appdata), uip_len) == false)
 			{
 				GCALENDARDEBUG("Parser error\n");
 				uip_close (); /* Parse error */
