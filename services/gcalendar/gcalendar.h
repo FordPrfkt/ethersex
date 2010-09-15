@@ -19,25 +19,30 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#ifndef HAVE_APPSAMPLE_H
-#define HAVE_APPSAMPLE_H
+#ifndef HAVE_GCALENDAR_H
+#define HAVE_GCALENDAR_H
 
-int16_t
-app_sample_onrequest(char *cmd, char *output, uint16_t len);
+#include <stdbool.h>
 
-int16_t
-app_sample_init(void);
+#define GCALENDAR_LOGINSIZE 70
 
-int16_t
-app_sample_periodic(void);
+char currentElement_ac[80];
+char text_ac[120];
+uint8_t textPos_ui8 = 0;
+char gCalendarLogin_ac[GCALENDAR_LOGINSIZE] = "fordprfkt%40googlemail.com/private-55986c3d0cf70a12ff89f27c8d69cb3c";
 
+int16_t gcalendarUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
+void gcalendarInit_v(void);
+bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
+bool gcalendarParse_b(char* data_pc, uint16_t len_ui16);
+bool gcalendarSetLogin_b(char* login_pc, uint16_t len_ui16);
 
 #include "config.h"
-#ifdef DEBUG_APP_SAMPLE
+#ifdef DEBUG_GCALENDAR
 # include "core/debug.h"
-# define APPSAMPLEDEBUG(a...)  debug_printf("app sample: " a)
+# define GCALENDARDEBUG(a...)  debug_printf("gWeather: "a);
 #else
-# define APPSAMPLEDEBUG(a...)
+# define GCALENDARDEBUG(a...)
 #endif
 
-#endif  /* HAVE_APPSAMPLE_H */
+#endif  /* HAVE_GCALENDAR_H */
