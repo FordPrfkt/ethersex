@@ -1,0 +1,6 @@
+dep_bool_menu "Google Calendar (EXPERIMENTAL)" GCALENDAR_SUPPORT $CONFIG_EXPERIMENTAL
+	string "Login" CONF_GCALENDAR_LOGIN "fordprfkt%40googlemail.com/private-55986c3d0cf70a12ff89f27c8d69cb3c"
+    dep_bool 'Use EEPROM' GCALENDAR_EEPROM_SUPPORT $GCALENDAR_SUPPORT
+    comment  "Debugging Flags"
+	dep_bool 'Google Calendar Debug' DEBUG_GCALENDAR $DEBUG $GCALENDAR_SUPPORT
+endmenu

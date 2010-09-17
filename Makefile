@@ -100,6 +100,7 @@ SUBDIRS += services/watchasync
 SUBDIRS += services/curtain
 SUBDIRS += services/gweather
 SUBDIRS += services/glcdmenu
+SUBDIRS += services/gcalendar
 
 rootbuild=t
 
