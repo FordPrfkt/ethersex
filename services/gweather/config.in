@@ -1,0 +1,6 @@
+dep_bool_menu "Google weather client (EXPERIMENTAL)" GWEATHER_SUPPORT $CONFIG_EXPERIMENTAL
+	string "City name" CONF_GWEATHER_CITY "Annweiler"
+    dep_bool 'Use EEPROM' GWEATHER_EEPROM_SUPPORT $GWEATHER_SUPPORT
+	comment  "Debugging Flags"
+	dep_bool 'Google weather Debug' DEBUG_GWEATHER $DEBUG $GWEATHER_SUPPORT
+endmenu
