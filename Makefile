@@ -113,6 +113,8 @@ SUBDIRS += services/lome6
 SUBDIRS += services/projectors/sanyoZ700
 SUBDIRS += services/gweather
 SUBDIRS += services/gcalendar
+SUBDIRS += services/googleServices
+SUBDIRS += services/glcdmenu
 
 rootbuild=t
 
