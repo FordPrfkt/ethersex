@@ -250,7 +250,6 @@ source services/clock/config.in
 source services/cron/config.in
 source services/dyndns/config.in
 source services/echo/config.in
-source services/gweather/config.in
 source services/wol/config.in
 source services/motd/config.in
 source services/httpd/config.in
@@ -264,7 +263,7 @@ source services/watchcat/config.in
 source services/vnc/config.in
 source services/watchasync/config.in
 source services/glcdmenu/config.in
-source services/gcalendar/config.in
+source services/googleServices/config.in
 endmenu
 
 ###############################################################################

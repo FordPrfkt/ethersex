@@ -98,9 +98,8 @@ SUBDIRS += services/watchcat
 SUBDIRS += services/vnc
 SUBDIRS += services/watchasync
 SUBDIRS += services/curtain
-SUBDIRS += services/gweather
+SUBDIRS += services/googleServices
 SUBDIRS += services/glcdmenu
-SUBDIRS += services/gcalendar
 
 rootbuild=t
 
