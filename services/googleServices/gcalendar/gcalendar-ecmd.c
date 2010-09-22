@@ -31,7 +31,7 @@
 #include "gcalendar.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-int16_t parse_cmd_update(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_cal_update(char *cmd, char *output, uint16_t len)
 {
   return gcalendarUpdate_i16(cmd, output, len);
 }
@@ -49,6 +49,6 @@ int16_t parse_cmd_login(char *cmd, char *output, uint16_t len)
 /*
 -- Ethersex META --
 block(Google_Calendar)
-ecmd_feature(update, "calendar update",, gCalendar update)
-ecmd_feature(login, "weather login ", LOGIN, gCalendar set LOGIN)
+ecmd_feature(cal_update, "calendar cal_update",, gCalendar cal_update)
+ecmd_feature(login, "calendar login ", LOGIN, gCalendar set LOGIN)
 */

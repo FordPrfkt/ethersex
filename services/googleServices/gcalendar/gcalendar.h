@@ -30,9 +30,12 @@ char gCalendarLogin_ac[GCALENDAR_LOGINSIZE];
 
 int16_t gcalendarUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
 void gcalendarInit_v(void);
-bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
+bool gcalendarGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
 bool gcalendarParse_b(char* data_pc, uint16_t len_ui16);
 bool gcalendarSetLogin_b(char* login_pc, uint16_t len_ui16);
+void gcalendarBeginReceive_v(void);
+void gcalendarEndReceive_v(void);
+uint16_t gcalendarGetRequestString_v(char request_ac[]);
 
 #include "config.h"
 #ifdef DEBUG_GCALENDAR
