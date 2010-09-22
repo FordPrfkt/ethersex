@@ -19,47 +19,21 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#ifndef HAVE_GWEATHER_H
-#define HAVE_GWEATHER_H
+#ifndef HAVE_GOOGLESERVICES_H
+#define HAVE_GOOGLESERVICES_H
 
 #include <stdbool.h>
 
-#define FC_NUM_ELEM 4
-#define GWEATHER_CITYSIZE 16
-
-typedef struct
-{
-	char dayOfWeek_ac[4];
-	char lowTemp_ac[5];
-	char highTemp_ac[5];
-	char condition_ac[21];
-} gWeatherForecast_t;
-
-char city_ac[31];
-char date_ac[11];
-char condition_ac[21];
-char temperature_ac[5];
-char humidity_ac[21];
-char wind_ac[51];
-gWeatherForecast_t forecast_as[FC_NUM_ELEM];
-char currentElement_ac[80];
-char gweatherCity_ac[GWEATHER_CITYSIZE];
-
-int16_t gweather_onrequest(char *cmd, char *output, uint16_t len);
-int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
-void gweatherInit_v(void);
-bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
-bool gweatherParse_b(char* data_pc, uint16_t len_ui16);
-bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16);
+void gservicesInit_v(void);
 
 #include "config.h"
-#ifdef DEBUG_GWEATHER
+#ifdef DEBUG_GSERVICE
   #include "core/debug.h"
-  #define GWEATHERDEBUG(a...)  debug_printf("gWeather: "a);
+  #define GSERVICESDEBUG(a...)  debug_printf("gWeather: "a);
 #else
-  #define GWEATHERDEBUG(a...)
+  #define GSERVICESDEBUG(a...)
 #endif
 
-#endif  /* HAVE_GWEATHER_H */
+#endif  /* HAVE_GOOGLESERVICES_H */
 
 /* EOF */

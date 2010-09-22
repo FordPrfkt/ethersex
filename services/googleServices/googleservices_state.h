@@ -19,41 +19,26 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#ifndef HAVE_GWEATHER_STATE_H
-#define HAVE_GWEATHER_STATE_H
+#ifndef HAVE_GOOGLESERVICE_STATE_H
+#define HAVE_GOOGLESERVICE_STATE_H
 
-enum {
-    GWEATHER_CONNECT,
-    GWEATHER_SEND_REQUEST,
-    GWEATHER_WAIT_RESPONSE,
-    GWEATHER_RECEIVE
-};
+#include "googleservices_shared.h"
 
-enum {
-	PARSER_WAIT_START,
-	PARSER_WAIT_TAG,
-	PARSER_IN_FORECAST,
-	PARSER_IN_CURRENTCOND,
-	PARSER_IN_FORECASTCOND,
-	PARSER_DONE
-};
-
-enum {
-	ELEMPARSER_WAIT_BEGIN,
-	ELEMPARSER_IN_ELEMENT,
-	ELEMPARSER_DONE
-};
+typedef enum {
+	GSERVICE_IDLE,
+    GSERVICE_CONNECT,
+    GSERVICE_SEND_REQUEST,
+    GSERVICE_WAIT_RESPONSE,
+    GSERVICE_RECEIVE
+}gServicesConnectionStage_t;
 
 #include <inttypes.h>
 #include "protocols/ecmd/via_tcp/ecmd_state.h"
 
-struct gweather_connection_state_t {
-	uint8_t stage_e;
-    uint8_t parserState_e;
-    uint8_t elementParserState_e;
-	uint8_t elemPos_ui8;
-	uint8_t fcPos_ui8;
+struct gservices_connection_state_t{
+	gServicesConnectionStage_t stage_e;
+	gServiceFunctions_t functions_s;
 };
 
-#endif  /* HAVE_GWEATHER_STATE_H */
+#endif  /* HAVE_GOOGLESERVICE_STATE_H */
 /* EOF */

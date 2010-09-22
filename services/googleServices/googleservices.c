@@ -26,143 +26,132 @@
 #include <stdbool.h>
 
 #include "config.h"
-#include "gweather.h"
+#include "googleservices_shared.h"
+#include "googleservices_state.h"
+#include "googleservices.h"
 #include "protocols/uip/uip.h"
 #include "protocols/dns/resolv.h"
 #include "protocols/ecmd/parser.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-#include "../glcdmenu/glcdmenu.h"
-#include "../glcdmenu/menu-interpreter/menu-interpreter-config.h"
-
 #ifndef DNS_SUPPORT
-#error "gWeather needs DNS support"
+#error "google services need DNS support"
 #endif
 
-#define STATE (&uip_conn->appstate.gweather)
-#define GWEATHER_HOST "www.google.de"
+#define STATE (&uip_conn->appstate.gservices)
 
-static uip_conn_t *gweather_conn;
+static void gservicesQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
+static void gservicesMain_v(void);
 
-static void gweatherQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
-static void gweatherMain_v(void);
-
-void gweatherSendRequest_v(void)
+void gservicesSendRequest_v(char request_ac[])
 {
-	uint16_t len_ui16;
-	len_ui16 = sprintf_P(uip_sappdata, REQUEST, gweatherCity_ac);
-	GWEATHERDEBUG("Send GET request(%i): %s\n", len_ui16, ((char*)uip_sappdata));
-	uip_send(uip_sappdata, len_ui16);
 }
 
-static void gweatherQueryCB_v(char *name, uip_ipaddr_t *ipaddr)
+static void gservicesQueryCB_v(char *name, uip_ipaddr_t *ipaddr)
 {
 	if (NULL == ipaddr)
 	{
-		GWEATHERDEBUG ("Could not resolve address\n");
+		GSERVICESDEBUG ("Could not resolve address\n");
 	}
 	else
 	{
-		GWEATHERDEBUG ("Address resolved\n");
-		gweather_conn = uip_connect(ipaddr, HTONS (80), gweatherMain_v);
-
-		if (NULL != gweather_conn)
-		{
-			GWEATHERDEBUG ("Wait for connect\n");
-			STATE->stage_e = GWEATHER_CONNECT;
-		}
-		else
-		{
-			GWEATHERDEBUG ("no uip_conn available.\n");
-		}
+		GSERVICESDEBUG ("Address resolved\n");
 	}
 }
 
-int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
+bool gservicesUpdate_b(const gServiceFunctions_t* functions_ps)
 {
 	uip_ipaddr_t* ip_p;
+	uip_conn_t* connection_ps;
 
-	GWEATHERDEBUG ("updating.\n");
+	GSERVICESDEBUG ("updating.\n");
 
-	ip_p = resolv_lookup(GWEATHER_HOST);
+	ip_p = resolv_lookup(GSERVICES_HOST);
 
 	if (NULL == ip_p)
 	{
-		GWEATHERDEBUG ("Resolving Address\n");
-		resolv_query(GWEATHER_HOST, gweatherQueryCB_v);
+		GSERVICESDEBUG ("Resolving Address\n");
+		resolv_query(GSERVICES_HOST, gservicesQueryCB_v);
 	}
 	else
 	{
-		GWEATHERDEBUG ("address already resolved\n");
-		gweather_conn = uip_connect(ip_p, HTONS(80), gweatherMain_v);
+		GSERVICESDEBUG ("address already resolved\n");
+		connection_ps = uip_connect(ip_p, HTONS(80), gservicesMain_v);
 
-		if (NULL == gweather_conn)
+		if (NULL == connection_ps)
 		{
-			GWEATHERDEBUG ("no uip_conn available.\n");
+			GSERVICESDEBUG ("no uip_conn available.\n");
 		}
 		else
 		{
-			GWEATHERDEBUG ("Wait for connect\n");
-			STATE->stage_e = GWEATHER_CONNECT;
+			GSERVICESDEBUG ("Wait for connect\n");
+			connection_ps->appstate.gservices.stage_e = GSERVICE_CONNECT;
+			memcpy(&connection_ps->appstate.gservices.functions_s, functions_ps, sizeof(gServiceFunctions_t));
+			return true;
 		}
-
-		return ECMD_FINAL_OK;
 	}
 
-	return ECMD_FINAL_OK;
+	return false;
 }
 
-static void gweatherMain_v(void)
+static void gservicesMain_v(void)
 {
+	uint16_t len_ui16;
+
 	if (uip_aborted() || uip_timedout())
 	{
-		GWEATHERDEBUG ("connection aborted\n");
-		gweather_conn = NULL;
+		GSERVICESDEBUG ("connection aborted\n");
+		STATE->stage_e = GSERVICE_IDLE;
+		STATE->functions_s.endReceive_v();
 	}
 
 	if (uip_closed())
 	{
-		GWEATHERDEBUG("connection closed\n");
-		gweather_conn = NULL;
-		glcdmenuRedraw();
+		GSERVICESDEBUG("connection closed\n");
+		STATE->stage_e = GSERVICE_IDLE;
+		STATE->functions_s.endReceive_v();
 	}
 
-	if (uip_connected() && STATE->stage_e == GWEATHER_CONNECT)
+	if (uip_connected() && STATE->stage_e == GSERVICE_CONNECT)
 	{
-		GWEATHERDEBUG("Connected\n");
-		STATE->stage_e = GWEATHER_SEND_REQUEST;
+		GSERVICESDEBUG("Connected\n");
+		STATE->stage_e = GSERVICE_SEND_REQUEST;
 	}
 
-	if (uip_rexmit() && (STATE->stage_e == GWEATHER_SEND_REQUEST
-			|| STATE->stage_e == GWEATHER_WAIT_RESPONSE))
+	if (uip_rexmit() && (STATE->stage_e == GSERVICE_SEND_REQUEST
+			|| STATE->stage_e == GSERVICE_WAIT_RESPONSE))
 	{
-		GWEATHERDEBUG("Re-Xmit\n");
-		gweatherSendRequest_v();
-		STATE->stage_e = GWEATHER_WAIT_RESPONSE;
+		GSERVICESDEBUG("Re-Xmit\n");
+		len_ui16 = STATE->functions_s.getRequestString(uip_sappdata);
+		GSERVICESDEBUG("Send GET request(%i): %s\n", len_ui16, ((char*)uip_sappdata));
+		uip_send(uip_sappdata, len_ui16);
+
+		STATE->stage_e = GSERVICE_WAIT_RESPONSE;
 	}
 
-	if (uip_poll() && (STATE->stage_e == GWEATHER_SEND_REQUEST))
+	if (uip_poll() && (STATE->stage_e == GSERVICE_SEND_REQUEST))
 	{
-		gweatherSendRequest_v();
-		STATE->stage_e = GWEATHER_WAIT_RESPONSE;
+		len_ui16 = STATE->functions_s.getRequestString(uip_sappdata);
+		GSERVICESDEBUG("Send GET request(%i): %s\n", len_ui16, ((char*)uip_sappdata));
+		uip_send(uip_sappdata, len_ui16);
+		STATE->stage_e = GSERVICE_WAIT_RESPONSE;
 	}
 
-	if (uip_acked() && STATE->stage_e == GWEATHER_WAIT_RESPONSE)
+	if (uip_acked() && STATE->stage_e == GSERVICE_WAIT_RESPONSE)
 	{
-		GWEATHERDEBUG("Request ACKed\n");
-		STATE->stage_e = GWEATHER_RECEIVE;
-		STATE->parserState_e = PARSER_WAIT_START;
-		STATE->elementParserState_e = ELEMPARSER_WAIT_BEGIN;
+		GSERVICESDEBUG("Request ACKed\n");
+		STATE->stage_e = GSERVICE_RECEIVE;
+		STATE->functions_s.beginReceive_v();
 	}
 
 	if (uip_newdata())
 	{
-		if (uip_len && STATE->stage_e == GWEATHER_RECEIVE)
+		if (uip_len && STATE->stage_e == GSERVICE_RECEIVE)
 		{
-			GWEATHERDEBUG("New Data\n");
-			if (gweatherParse_b(((char *) uip_appdata), uip_len) == false)
+			GSERVICESDEBUG("New Data\n");
+			if (STATE->functions_s.parse_b(((char *) uip_appdata), uip_len) == false)
 			{
-				GWEATHERDEBUG("Parser error\n");
+				GSERVICESDEBUG("Parser error\n");
 				uip_close (); /* Parse error */
 				return;
 			}
@@ -170,32 +159,18 @@ static void gweatherMain_v(void)
 	}
 }
 
-void gweatherInit_v(void)
+void gservicesInit_v(void)
 {
-	GWEATHERDEBUG("initializing google weather client\n");
-
-#ifdef GWEATHER_EEPROM_SUPPORT
-	eeprom_restore(gweatherCity_ac, &gweatherCity_ac, GWEATHER_CITYSIZE);
-#else
-	sprintf(gweatherCity_ac, PSTR("%s"), CONF_GWEATHER_CITY);
-#endif
-}
-
-int16_t gweather_onrequest(char *cmd, char *output, uint16_t len)
-{
-	GWEATHERDEBUG ("main\n");
-	// enter your code here
-
-	return ECMD_FINAL_OK;
+	GSERVICESDEBUG("initializing google services client\n");
 }
 
 /*
  -- Ethersex META --
- header(services/gweather/gweather.h)
- net_init(gweatherInit_v)
+ header(services/googleServices/googleservices.h)
+ net_init(gservicesInit_v)
 
- state_header(services/gweather/gweather_state.h)
- state_tcp(struct gweather_connection_state_t gweather)
+ state_header(services/googleServices/googleservices_state.h)
+ state_tcp(struct gservices_connection_state_t gservices)
  */
 
 /* EOF */

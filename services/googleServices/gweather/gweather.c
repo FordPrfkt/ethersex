@@ -27,20 +27,43 @@
 
 #include "config.h"
 #include "gweather.h"
-#include "protocols/uip/uip.h"
-#include "protocols/dns/resolv.h"
+#include "../googleservices.h"
+#include "../googleservices_shared.h"
 #include "protocols/ecmd/parser.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-#include "../glcdmenu/glcdmenu.h"
-#include "../glcdmenu/menu-interpreter/menu-interpreter-config.h"
+#include "../../glcdmenu/glcdmenu.h"
+#include "../../glcdmenu/menu-interpreter/menu-interpreter-config.h"
 
-#ifndef DNS_SUPPORT
-#error "gWeather needs DNS support"
-#endif
+typedef enum {
+	PARSER_WAIT_START,
+	PARSER_WAIT_TAG,
+	PARSER_IN_FORECAST,
+	PARSER_IN_CURRENTCOND,
+	PARSER_IN_FORECASTCOND,
+	PARSER_DONE
+}gweatherParserState_t;
 
-#define STATE (&uip_conn->appstate.gweather)
-#define GWEATHER_HOST "www.google.de"
+typedef enum {
+	ELEMPARSER_WAIT_BEGIN,
+	ELEMPARSER_IN_ELEMENT,
+	ELEMPARSER_DONE
+}gweatherElemParserState_t;
+
+static gweatherParserState_t parserState_e;
+static gweatherElemParserState_t elementParserState_e;
+static uint8_t elemPos_ui8;
+static uint8_t fcPos_ui8;
+
+static char city_ac[31];
+static char date_ac[11];
+static char condition_ac[21];
+static char temperature_ac[5];
+static char humidity_ac[21];
+static char wind_ac[51];
+static gWeatherForecast_t forecast_as[FC_NUM_ELEM];
+static char currentElement_ac[80];
+static char gweatherCity_ac[GWEATHER_CITYSIZE];
 
 static const char PROGMEM WEATHER_TAG[] = "weather";
 static const char PROGMEM FORECAST_TAG[] = "forecast_information";
@@ -57,12 +80,14 @@ static const char PROGMEM LOW_TAG[] = "low data=";
 static const char PROGMEM HIGH_TAG[] = "high data=";
 static const char
 		PROGMEM REQUEST[] =
-				"GET /ig/api?weather=%s HTTP/1.1\nHost: "GWEATHER_HOST"\nConnection: Close\r\n\r\n";
+				"GET /ig/api?weather=%s HTTP/1.1\nHost: "GSERVICES_HOST"\nConnection: Close\r\n\r\n";
 
-static uip_conn_t *gweather_conn;
-
-static void gweatherQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
-static void gweatherMain_v(void);
+const gServiceFunctions_t functionPtrs_s = {
+	gweatherGetRequestString_v,
+	gweatherEndReceive_v,
+	gweatherBeginReceive_v,
+	gweatherParse_b
+};
 
 bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc,
 		uint8_t outLen_ui8)
@@ -123,15 +148,15 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 	/* Check the received data block */
 	while (pos_ui16 < len_ui16)
 	{
-		switch (STATE->elementParserState_e)
+		switch (elementParserState_e)
 		{
 		case ELEMPARSER_WAIT_BEGIN: /* Seek for tag opening "<" */
 			if (data_pc[pos_ui16] == '<')
 			{
 				/* Found. Begin copy element */
 				memset(currentElement_ac, 0, sizeof(currentElement_ac));
-				STATE->elementParserState_e = ELEMPARSER_IN_ELEMENT;
-				STATE->elemPos_ui8 = 0;
+				elementParserState_e = ELEMPARSER_IN_ELEMENT;
+				elemPos_ui8 = 0;
 			}
 			break;
 
@@ -139,22 +164,22 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 			if (data_pc[pos_ui16] != '>')
 			{
 				/* Copy element content until closing tag ">" into currentElement_ac */
-				if (STATE->elemPos_ui8 < sizeof(currentElement_ac) - 1)
+				if (elemPos_ui8 < sizeof(currentElement_ac) - 1)
 				{
-					currentElement_ac[STATE->elemPos_ui8] = data_pc[pos_ui16];
-					STATE->elemPos_ui8++;
+					currentElement_ac[elemPos_ui8] = data_pc[pos_ui16];
+					elemPos_ui8++;
 				}
 			}
 			else
 			{
 				/* Closing tag found */
-				STATE->elementParserState_e = ELEMPARSER_DONE;
+				elementParserState_e = ELEMPARSER_DONE;
 			}
 			break;
 
 		case ELEMPARSER_DONE:
 			/* Wait for next tag */
-			STATE->elementParserState_e = ELEMPARSER_WAIT_BEGIN;
+			elementParserState_e = ELEMPARSER_WAIT_BEGIN;
 			if (pos_ui16 > 0)
 				pos_ui16--; /* Reparse the current character */
 			break;
@@ -168,17 +193,17 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 		}
 
 		/* If a tag was found, check the content */
-		if (ELEMPARSER_DONE == STATE->elementParserState_e)
+		if (ELEMPARSER_DONE == elementParserState_e)
 		{
-			switch (STATE->parserState_e)
+			switch (parserState_e)
 			{
 			case PARSER_WAIT_START:
 				/* Wait for content start */
 				if (strstr_P(currentElement_ac, WEATHER_TAG) != 0)
 				{
 					GWEATHERDEBUG("Parser: Content start\n");
-					STATE->parserState_e = PARSER_WAIT_TAG;
-					STATE->fcPos_ui8 = 0;
+					parserState_e = PARSER_WAIT_TAG;
+					fcPos_ui8 = 0;
 				}
 				break;
 
@@ -189,30 +214,30 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					GWEATHERDEBUG("Parser: Forecast tag\n");
 					/* Forecast information: City, etc. */
-					STATE->parserState_e = PARSER_IN_FORECAST;
+					parserState_e = PARSER_IN_FORECAST;
 				}
 				else if (strstr_P(currentElement_ac, CURRENT_COND_TAG) != 0)
 				{
 					GWEATHERDEBUG("Parser: Current cond. tag\n");
 					/* Current condition */
-					STATE->parserState_e = PARSER_IN_CURRENTCOND;
+					parserState_e = PARSER_IN_CURRENTCOND;
 				}
 				else if (strstr_P(currentElement_ac, FORECASTCOND_TAG) != 0)
 				{
 					GWEATHERDEBUG("Parser: Forecast cond. tag\n");
 					/* forecast condition for the next days, this block
 					 * is repeated in the document */
-					if (STATE->fcPos_ui8 < FC_NUM_ELEM)
+					if (fcPos_ui8 < FC_NUM_ELEM)
 					{
 						/* While we have space for new data */
-						STATE->parserState_e = PARSER_IN_FORECASTCOND;
+						parserState_e = PARSER_IN_FORECASTCOND;
 					}
 				}
 				else if (strstr_P(currentElement_ac, WEATHER_TAG) != 0)
 				{
 					GWEATHERDEBUG("Parser: End tag\n");
 					/* Encountered the opening tag again. End of document */
-					STATE->parserState_e = PARSER_DONE;
+					parserState_e = PARSER_DONE;
 				}
 				else
 				{
@@ -225,18 +250,18 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* City tag */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8, city_ac, sizeof(city_ac));
+							elemPos_ui8, city_ac, sizeof(city_ac));
 				}
 				else if (strstr_P(currentElement_ac, FORECAST_DATE_TAG) != 0)
 				{
 					/* Condition tag */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8, date_ac, sizeof(date_ac));
+							elemPos_ui8, date_ac, sizeof(date_ac));
 				}
 				else if (strstr_P(currentElement_ac, FORECAST_TAG) != 0)
 				{
 					/* Closing tag found. Wait for next block. */
-					STATE->parserState_e = PARSER_WAIT_TAG;
+					parserState_e = PARSER_WAIT_TAG;
 				}
 				else
 				{
@@ -250,33 +275,33 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 					/* Wind condition. This must be before the "Condtion"
 					 * test */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8, wind_ac, sizeof(wind_ac));
+							elemPos_ui8, wind_ac, sizeof(wind_ac));
 				}
 				else if (strstr_P(currentElement_ac, CONDITION_TAG) != 0)
 				{
 					/* Condtion */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8, condition_ac,
+							elemPos_ui8, condition_ac,
 							sizeof(condition_ac));
 				}
 				else if (strstr_P(currentElement_ac, TEMP_TAG) != 0)
 				{
 					/* Temperature */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8, temperature_ac,
+							elemPos_ui8, temperature_ac,
 							sizeof(temperature_ac));
 				}
 				else if (strstr_P(currentElement_ac, HUMIDITY_TAG) != 0)
 				{
 					/* Humidity */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8, humidity_ac,
+							elemPos_ui8, humidity_ac,
 							sizeof(humidity_ac));
 				}
 				else if (strstr_P(currentElement_ac, CURRENT_COND_TAG) != 0)
 				{
 					/* Closing tag found */
-					STATE->parserState_e = PARSER_WAIT_TAG;
+					parserState_e = PARSER_WAIT_TAG;
 				}
 				else
 				{
@@ -289,39 +314,39 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					/* Day of week */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8,
-							forecast_as[STATE->fcPos_ui8].dayOfWeek_ac,
-							sizeof(forecast_as[STATE->fcPos_ui8].dayOfWeek_ac));
+							elemPos_ui8,
+							forecast_as[fcPos_ui8].dayOfWeek_ac,
+							sizeof(forecast_as[fcPos_ui8].dayOfWeek_ac));
 				}
 				else if (strstr_P(currentElement_ac, LOW_TAG) != 0)
 				{
 					/* Low temperature */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8,
-							forecast_as[STATE->fcPos_ui8].lowTemp_ac,
-							sizeof(forecast_as[STATE->fcPos_ui8].lowTemp_ac));
+							elemPos_ui8,
+							forecast_as[fcPos_ui8].lowTemp_ac,
+							sizeof(forecast_as[fcPos_ui8].lowTemp_ac));
 				}
 				else if (strstr_P(currentElement_ac, HIGH_TAG) != 0)
 				{
 					/* High temperature */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8,
-							forecast_as[STATE->fcPos_ui8].highTemp_ac,
-							sizeof(forecast_as[STATE->fcPos_ui8].highTemp_ac));
+							elemPos_ui8,
+							forecast_as[fcPos_ui8].highTemp_ac,
+							sizeof(forecast_as[fcPos_ui8].highTemp_ac));
 				}
 				else if (strstr_P(currentElement_ac, CONDITION_TAG) != 0)
 				{
 					/* Weather condition */
 					result_b = gweatherGetAttribute_b(currentElement_ac,
-							STATE->elemPos_ui8,
-							forecast_as[STATE->fcPos_ui8].condition_ac,
-							sizeof(forecast_as[STATE->fcPos_ui8].condition_ac));
+							elemPos_ui8,
+							forecast_as[fcPos_ui8].condition_ac,
+							sizeof(forecast_as[fcPos_ui8].condition_ac));
 				}
 				else if (strstr_P(currentElement_ac, FORECASTCOND_TAG) != 0)
 				{
 					/* Closing tag found. Next forecast? */
-					STATE->fcPos_ui8++;
-					STATE->parserState_e = PARSER_WAIT_TAG;
+					fcPos_ui8++;
+					parserState_e = PARSER_WAIT_TAG;
 				}
 				else
 				{
@@ -368,35 +393,67 @@ bool gweatherParse_b(char* data_pc, uint16_t len_ui16)
 	return result_b;
 }
 
-void gweatherSendRequest_v(void)
+void gweatherBeginReceive_v(void)
 {
-	uint16_t len_ui16;
-	len_ui16 = sprintf_P(uip_sappdata, REQUEST, gweatherCity_ac);
-	GWEATHERDEBUG("Send GET request(%i): %s\n", len_ui16, ((char*)uip_sappdata));
-	uip_send(uip_sappdata, len_ui16);
+	parserState_e = PARSER_WAIT_START;
+	elementParserState_e = ELEMPARSER_WAIT_BEGIN;
+
+	memset(forecast_as, 0, sizeof(forecast_as));
+	memset(city_ac, 0, sizeof(city_ac));
+	memset(date_ac, 0, sizeof(date_ac));
+	memset(condition_ac, 0, sizeof(condition_ac));
+	memset(temperature_ac, 0, sizeof(temperature_ac));
+	memset(humidity_ac, 0, sizeof(humidity_ac));
+	memset(wind_ac, 0, sizeof(wind_ac));
+	glcdmenuSetString(MENU_TEXT_W_CITY, (unsigned char*) city_ac);
+	glcdmenuSetString(MENU_TEXT_W_DATE, (unsigned char*) date_ac);
+	glcdmenuSetString(MENU_TEXT_W_WIND, (unsigned char*) wind_ac);
+	glcdmenuSetString(MENU_TEXT_W_COND, (unsigned char*) condition_ac);
+	glcdmenuSetString(MENU_TEXT_W_TEMP, (unsigned char*) temperature_ac);
+	glcdmenuSetString(MENU_TEXT_W_HUMID, (unsigned char*) humidity_ac);
+	glcdmenuSetString(MENU_TEXT_W_DOW1,
+			(unsigned char*) forecast_as[0].dayOfWeek_ac);
+	glcdmenuSetString(MENU_TEXT_W_DOW2,
+			(unsigned char*) forecast_as[1].dayOfWeek_ac);
+	glcdmenuSetString(MENU_TEXT_W_DOW3,
+			(unsigned char*) forecast_as[2].dayOfWeek_ac);
+	glcdmenuSetString(MENU_TEXT_W_DOW4,
+			(unsigned char*) forecast_as[3].dayOfWeek_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT1,
+			(unsigned char*) forecast_as[0].lowTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT2,
+			(unsigned char*) forecast_as[0].highTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT3,
+			(unsigned char*) forecast_as[1].lowTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT4,
+			(unsigned char*) forecast_as[1].highTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT5,
+			(unsigned char*) forecast_as[2].lowTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT6,
+			(unsigned char*) forecast_as[2].highTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT7,
+			(unsigned char*) forecast_as[3].lowTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FT8,
+			(unsigned char*) forecast_as[3].highTemp_ac);
+	glcdmenuSetString(MENU_TEXT_W_FC1,
+			(unsigned char*) forecast_as[1].condition_ac);
+	glcdmenuSetString(MENU_TEXT_W_FC3,
+			(unsigned char*) forecast_as[2].condition_ac);
+	glcdmenuSetString(MENU_TEXT_W_FC4,
+			(unsigned char*) forecast_as[3].condition_ac);
 }
 
-static void gweatherQueryCB_v(char *name, uip_ipaddr_t *ipaddr)
+void gweatherEndReceive_v(void)
 {
-	if (NULL == ipaddr)
-	{
-		GWEATHERDEBUG ("Could not resolve address\n");
-	}
-	else
-	{
-		GWEATHERDEBUG ("Address resolved\n");
-		gweather_conn = uip_connect(ipaddr, HTONS (80), gweatherMain_v);
+	glcdmenuRedraw();
+}
 
-		if (NULL != gweather_conn)
-		{
-			GWEATHERDEBUG ("Wait for connect\n");
-			STATE->stage_e = GWEATHER_CONNECT;
-		}
-		else
-		{
-			GWEATHERDEBUG ("no uip_conn available.\n");
-		}
-	}
+uint16_t gweatherGetRequestString_v(char request_ac[])
+{
+	uint16_t len_ui16;
+	len_ui16 = sprintf_P(request_ac, REQUEST, gweatherCity_ac);
+	GWEATHERDEBUG("Request(%i): %s\n", len_ui16, ((char*)request_ac));
+	return len_ui16;
 }
 
 bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16)
@@ -414,143 +471,6 @@ bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16)
 	return true;
 }
 
-int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
-{
-	uip_ipaddr_t* ip_p;
-
-	GWEATHERDEBUG ("updating.\n");
-
-	ip_p = resolv_lookup(GWEATHER_HOST);
-
-	if (NULL == ip_p)
-	{
-		GWEATHERDEBUG ("Resolving Address\n");
-		resolv_query(GWEATHER_HOST, gweatherQueryCB_v);
-	}
-	else
-	{
-		GWEATHERDEBUG ("address already resolved\n");
-		gweather_conn = uip_connect(ip_p, HTONS(80), gweatherMain_v);
-
-		if (NULL == gweather_conn)
-		{
-			GWEATHERDEBUG ("no uip_conn available.\n");
-		}
-		else
-		{
-			GWEATHERDEBUG ("Wait for connect\n");
-			STATE->stage_e = GWEATHER_CONNECT;
-		}
-
-		return ECMD_FINAL_OK;
-	}
-
-	return ECMD_FINAL_OK;
-}
-
-static void gweatherMain_v(void)
-{
-	if (uip_aborted() || uip_timedout())
-	{
-		GWEATHERDEBUG ("connection aborted\n");
-		gweather_conn = NULL;
-	}
-
-	if (uip_closed())
-	{
-		GWEATHERDEBUG("connection closed\n");
-		gweather_conn = NULL;
-		glcdmenuRedraw();
-	}
-
-	if (uip_connected() && STATE->stage_e == GWEATHER_CONNECT)
-	{
-		GWEATHERDEBUG("Connected\n");
-		STATE->stage_e = GWEATHER_SEND_REQUEST;
-	}
-
-	if (uip_rexmit() && (STATE->stage_e == GWEATHER_SEND_REQUEST
-			|| STATE->stage_e == GWEATHER_WAIT_RESPONSE))
-	{
-		GWEATHERDEBUG("Re-Xmit\n");
-		gweatherSendRequest_v();
-		STATE->stage_e = GWEATHER_WAIT_RESPONSE;
-	}
-
-	if (uip_poll() && (STATE->stage_e == GWEATHER_SEND_REQUEST))
-	{
-		gweatherSendRequest_v();
-		STATE->stage_e = GWEATHER_WAIT_RESPONSE;
-	}
-
-	if (uip_acked() && STATE->stage_e == GWEATHER_WAIT_RESPONSE)
-	{
-		GWEATHERDEBUG("Request ACKed\n");
-		STATE->stage_e = GWEATHER_RECEIVE;
-		STATE->parserState_e = PARSER_WAIT_START;
-		STATE->elementParserState_e = ELEMPARSER_WAIT_BEGIN;
-
-		memset(forecast_as, 0, sizeof(forecast_as));
-		memset(city_ac, 0, sizeof(city_ac));
-		memset(date_ac, 0, sizeof(date_ac));
-		memset(condition_ac, 0, sizeof(condition_ac));
-		memset(temperature_ac, 0, sizeof(temperature_ac));
-		memset(humidity_ac, 0, sizeof(humidity_ac));
-		memset(wind_ac, 0, sizeof(wind_ac));
-		glcdmenuSetString(MENU_TEXT_W_CITY, (unsigned char*) city_ac);
-		glcdmenuSetString(MENU_TEXT_W_DATE, (unsigned char*) date_ac);
-		glcdmenuSetString(MENU_TEXT_W_WIND, (unsigned char*) wind_ac);
-		glcdmenuSetString(MENU_TEXT_W_COND, (unsigned char*) condition_ac);
-		glcdmenuSetString(MENU_TEXT_W_TEMP, (unsigned char*) temperature_ac);
-		glcdmenuSetString(MENU_TEXT_W_HUMID, (unsigned char*) humidity_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW1,
-				(unsigned char*) forecast_as[0].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW2,
-				(unsigned char*) forecast_as[1].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW3,
-				(unsigned char*) forecast_as[2].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_DOW4,
-				(unsigned char*) forecast_as[3].dayOfWeek_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT1,
-				(unsigned char*) forecast_as[0].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT2,
-				(unsigned char*) forecast_as[0].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT3,
-				(unsigned char*) forecast_as[1].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT4,
-				(unsigned char*) forecast_as[1].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT5,
-				(unsigned char*) forecast_as[2].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT6,
-				(unsigned char*) forecast_as[2].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT7,
-				(unsigned char*) forecast_as[3].lowTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FT8,
-				(unsigned char*) forecast_as[3].highTemp_ac);
-		glcdmenuSetString(MENU_TEXT_W_FC1,
-				(unsigned char*) forecast_as[1].condition_ac);
-		glcdmenuSetString(MENU_TEXT_W_FC3,
-				(unsigned char*) forecast_as[2].condition_ac);
-		glcdmenuSetString(MENU_TEXT_W_FC4,
-				(unsigned char*) forecast_as[3].condition_ac);
-
-	}
-
-	if (uip_newdata())
-	{
-		if (uip_len && STATE->stage_e == GWEATHER_RECEIVE)
-		{
-			GWEATHERDEBUG("New Data\n");
-			if (gweatherParse_b(((char *) uip_appdata), uip_len) == false)
-			{
-				GWEATHERDEBUG("Parser error\n");
-				uip_close (); /* Parse error */
-				return;
-			}
-		}
-	}
-}
-
 void gweatherInit_v(void)
 {
 	GWEATHERDEBUG("initializing google weather client\n");
@@ -562,6 +482,12 @@ void gweatherInit_v(void)
 #endif
 }
 
+int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
+{
+	gservicesUpdate_b(&functionPtrs_s);
+	return ECMD_FINAL_OK;
+}
+
 int16_t gweather_onrequest(char *cmd, char *output, uint16_t len)
 {
 	GWEATHERDEBUG ("main\n");
@@ -569,14 +495,5 @@ int16_t gweather_onrequest(char *cmd, char *output, uint16_t len)
 
 	return ECMD_FINAL_OK;
 }
-
-/*
- -- Ethersex META --
- header(services/gweather/gweather.h)
- net_init(gweatherInit_v)
-
- state_header(services/gweather/gweather_state.h)
- state_tcp(struct gweather_connection_state_t gweather)
- */
 
 /* EOF */
