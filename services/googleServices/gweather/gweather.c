@@ -82,13 +82,6 @@ static const char
 		PROGMEM REQUEST[] =
 				"GET /ig/api?weather=%s HTTP/1.1\nHost: "GSERVICES_HOST"\nConnection: Close\r\n\r\n";
 
-const gServiceFunctions_t functionPtrs_s = {
-	gweatherGetRequestString_v,
-	gweatherEndReceive_v,
-	gweatherBeginReceive_v,
-	gweatherParse_b
-};
-
 bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc,
 		uint8_t outLen_ui8)
 {
@@ -484,7 +477,7 @@ void gweatherInit_v(void)
 
 int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
 {
-	gservicesUpdate_b(&functionPtrs_s);
+	gservicesUpdate_b(GWEATHER_SERVICE);
 	return ECMD_FINAL_OK;
 }
 

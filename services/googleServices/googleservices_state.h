@@ -23,6 +23,7 @@
 #define HAVE_GOOGLESERVICE_STATE_H
 
 #include "googleservices_shared.h"
+#include "googleservices.h"
 
 typedef enum {
 	GSERVICE_IDLE,
@@ -37,7 +38,7 @@ typedef enum {
 
 struct gservices_connection_state_t{
 	gServicesConnectionStage_t stage_e;
-	gServiceFunctions_t functions_s;
+	gservicesServiceTypes_t service_e;
 };
 
 #endif  /* HAVE_GOOGLESERVICE_STATE_H */

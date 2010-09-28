@@ -27,6 +27,8 @@
 #define FC_NUM_ELEM 4
 #define GWEATHER_CITYSIZE 16
 
+#define GSERVICE_WEATHER_INIT {gweatherInit_v, gweatherGetRequestString_v, gweatherEndReceive_v, gweatherBeginReceive_v, gweatherParse_b}
+
 typedef struct
 {
 	char dayOfWeek_ac[4];

@@ -29,6 +29,8 @@
 #include "googleservices_shared.h"
 #include "googleservices_state.h"
 #include "googleservices.h"
+#include "gweather/gweather.h"
+#include "gcalendar/gcalendar.h"
 #include "protocols/uip/uip.h"
 #include "protocols/dns/resolv.h"
 #include "protocols/ecmd/parser.h"
@@ -40,12 +42,13 @@
 
 #define STATE (&uip_conn->appstate.gservices)
 
+static const gServiceFunctions_t funcPtrs[GSERVICES_NUM_SERVICES] = {
+		GSERVICE_WEATHER_INIT,
+		GSERVICE_CALENDAR_INIT
+};
+
 static void gservicesQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
 static void gservicesMain_v(void);
-
-void gservicesSendRequest_v(char request_ac[])
-{
-}
 
 static void gservicesQueryCB_v(char *name, uip_ipaddr_t *ipaddr)
 {
@@ -59,7 +62,7 @@ static void gservicesQueryCB_v(char *name, uip_ipaddr_t *ipaddr)
 	}
 }
 
-bool gservicesUpdate_b(const gServiceFunctions_t* functions_ps)
+bool gservicesUpdate_b(gservicesServiceTypes_t serviceType_e)
 {
 	uip_ipaddr_t* ip_p;
 	uip_conn_t* connection_ps;
@@ -86,7 +89,7 @@ bool gservicesUpdate_b(const gServiceFunctions_t* functions_ps)
 		{
 			GSERVICESDEBUG ("Wait for connect\n");
 			connection_ps->appstate.gservices.stage_e = GSERVICE_CONNECT;
-			memcpy(&connection_ps->appstate.gservices.functions_s, functions_ps, sizeof(gServiceFunctions_t));
+			connection_ps->appstate.gservices.service_e = serviceType_e;
 			return true;
 		}
 	}
@@ -102,14 +105,14 @@ static void gservicesMain_v(void)
 	{
 		GSERVICESDEBUG ("connection aborted\n");
 		STATE->stage_e = GSERVICE_IDLE;
-		STATE->functions_s.endReceive_v();
+		funcPtrs[STATE->service_e].endReceive_v();
 	}
 
 	if (uip_closed())
 	{
 		GSERVICESDEBUG("connection closed\n");
 		STATE->stage_e = GSERVICE_IDLE;
-		STATE->functions_s.endReceive_v();
+		funcPtrs[STATE->service_e].endReceive_v();
 	}
 
 	if (uip_connected() && STATE->stage_e == GSERVICE_CONNECT)
@@ -122,7 +125,7 @@ static void gservicesMain_v(void)
 			|| STATE->stage_e == GSERVICE_WAIT_RESPONSE))
 	{
 		GSERVICESDEBUG("Re-Xmit\n");
-		len_ui16 = STATE->functions_s.getRequestString(uip_sappdata);
+		len_ui16 = funcPtrs[STATE->service_e].getRequestString(uip_sappdata);
 		GSERVICESDEBUG("Send GET request(%i): %s\n", len_ui16, ((char*)uip_sappdata));
 		uip_send(uip_sappdata, len_ui16);
 
@@ -131,7 +134,7 @@ static void gservicesMain_v(void)
 
 	if (uip_poll() && (STATE->stage_e == GSERVICE_SEND_REQUEST))
 	{
-		len_ui16 = STATE->functions_s.getRequestString(uip_sappdata);
+		len_ui16 = funcPtrs[STATE->service_e].getRequestString(uip_sappdata);
 		GSERVICESDEBUG("Send GET request(%i): %s\n", len_ui16, ((char*)uip_sappdata));
 		uip_send(uip_sappdata, len_ui16);
 		STATE->stage_e = GSERVICE_WAIT_RESPONSE;
@@ -141,7 +144,7 @@ static void gservicesMain_v(void)
 	{
 		GSERVICESDEBUG("Request ACKed\n");
 		STATE->stage_e = GSERVICE_RECEIVE;
-		STATE->functions_s.beginReceive_v();
+		funcPtrs[STATE->service_e].beginReceive_v();
 	}
 
 	if (uip_newdata())
@@ -149,7 +152,7 @@ static void gservicesMain_v(void)
 		if (uip_len && STATE->stage_e == GSERVICE_RECEIVE)
 		{
 			GSERVICESDEBUG("New Data\n");
-			if (STATE->functions_s.parse_b(((char *) uip_appdata), uip_len) == false)
+			if (funcPtrs[STATE->service_e].parse_b(((char *) uip_appdata), uip_len) == false)
 			{
 				GSERVICESDEBUG("Parser error\n");
 				uip_close (); /* Parse error */
@@ -161,7 +164,14 @@ static void gservicesMain_v(void)
 
 void gservicesInit_v(void)
 {
+	uint8_t i;
 	GSERVICESDEBUG("initializing google services client\n");
+	resolv_query(GSERVICES_HOST, gservicesQueryCB_v);
+
+	for (i = 0; i < GSERVICES_NUM_SERVICES; i++)
+	{
+		funcPtrs[i].init_v();
+	}
 }
 
 /*
