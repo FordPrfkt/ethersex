@@ -24,12 +24,18 @@
 
 #include <stdbool.h>
 
+typedef enum {
+		GWEATHER_SERVICE,
+		GCALENDAR_SERVICE,
+		GSERVICES_NUM_SERVICES
+}gservicesServiceTypes_t;
+
 void gservicesInit_v(void);
 
 #include "config.h"
 #ifdef DEBUG_GSERVICE
   #include "core/debug.h"
-  #define GSERVICESDEBUG(a...)  debug_printf("gWeather: "a);
+  #define GSERVICESDEBUG(a...)  debug_printf("gService: "a);
 #else
   #define GSERVICESDEBUG(a...)
 #endif

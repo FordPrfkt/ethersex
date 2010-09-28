@@ -25,12 +25,12 @@
 #include <stdbool.h>
 
 #define GCALENDAR_LOGINSIZE 70
+#define GSERVICE_CALENDAR_INIT {gcalendarInit_v, gcalendarGetRequestString_v, gcalendarEndReceive_v, gcalendarBeginReceive_v, gcalendarParse_b}
 
 char gCalendarLogin_ac[GCALENDAR_LOGINSIZE];
 
 int16_t gcalendarUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
 void gcalendarInit_v(void);
-bool gcalendarGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
 bool gcalendarParse_b(char* data_pc, uint16_t len_ui16);
 bool gcalendarSetLogin_b(char* login_pc, uint16_t len_ui16);
 void gcalendarBeginReceive_v(void);
