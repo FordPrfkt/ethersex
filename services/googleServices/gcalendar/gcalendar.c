@@ -37,10 +37,7 @@
 
 enum
 {
-	PARSER_WAIT_TAG,
-	PARSER_IN_ENTRY,
-	PARSER_IN_TITLE,
-	PARSER_DONE
+	PARSER_WAIT_TAG, PARSER_IN_ENTRY, PARSER_IN_TITLE, PARSER_DONE
 };
 
 enum
@@ -51,22 +48,61 @@ enum
 	ELEMPARSER_DONE
 };
 
-uint8_t parserState_e;
-uint8_t elementParserState_e;
-uint8_t elemPos_ui8;
-uint8_t fcPos_ui8;
-char currentElement_ac[80];
-char text_ac[120];
-uint8_t textPos_ui8 = 0;
+static uint8_t parserState_e;
+static uint8_t elementParserState_e;
+static uint8_t elemPos_ui8 = 0;
+static uint8_t textPos_ui8 = 0;
+static char currentElement_ac[80];
+static char text_ac[120];
 
 static const char PROGMEM FEED_TAG[] = "feed";
+static const char PROGMEM END_FEED_TAG[] = "/feed";
 static const char PROGMEM ENTRY_TAG[] = "entry";
+static const char PROGMEM END_ENTRY_TAG[] = "/entry";
 static const char PROGMEM TITLE_TAG[] = "title type='text'";
+static const char PROGMEM END_TITLE_TAG[] = "/title";
 static const char PROGMEM WHEN_TAG[] = "gd:when";
+static const char PROGMEM END_WHEN_TAG[] = "/gd:when";
 
 static const char
 		PROGMEM REQUEST[] =
 				"GET /calendar/feeds/%s/full HTTP/1.1\nHost: "GSERVICES_HOST"\nConnection: Close\r\n\r\n";
+
+uint8_t gcalendarGetWhen(char inStr_ac[], uint8_t insertPos_ui8,
+		char outStr_ac[], uint8_t outLen_ui8)
+{
+	uint8_t curPos_ui8 = insertPos_ui8;
+	if ((outLen_ui8 - curPos_ui8) >= 22)
+	{
+		memcpy(outStr_ac + curPos_ui8, inStr_ac + 17, 10);
+		curPos_ui8 += 10;
+		outStr_ac[curPos_ui8] = ' ';
+		curPos_ui8++;
+		memcpy(outStr_ac + curPos_ui8, inStr_ac + 28, 8);
+		curPos_ui8 += 8;
+		outStr_ac[curPos_ui8] = '\n';
+		curPos_ui8++;
+		outStr_ac[curPos_ui8] = '\n';
+		curPos_ui8++;
+	}
+
+	return curPos_ui8;
+}
+
+uint8_t gcalendarGetTitle(char inStr_ac[], uint8_t insertPos_ui8,
+		uint8_t size_ui8, char outStr_ac[], uint8_t outLen_ui8)
+{
+	uint8_t curPos_ui8 = insertPos_ui8;
+	if ((outLen_ui8 - curPos_ui8) >= (size_ui8 + 1))
+	{
+		memcpy(outStr_ac + curPos_ui8, inStr_ac, size_ui8);
+		curPos_ui8 += size_ui8;
+		outStr_ac[curPos_ui8] = '\n';
+		curPos_ui8++;
+	}
+
+	return curPos_ui8;
+}
 
 bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 {
@@ -139,13 +175,11 @@ bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 				{
 					GCALENDARDEBUG("Parser: Entry tag\n");
 					parserState_e = PARSER_IN_ENTRY;
-					fcPos_ui8 = 0;
 				}
-				else if (strcmp(currentElement_ac, "/feed") == 0)
+				else if (strcmp_P(currentElement_ac, END_FEED_TAG) == 0)
 				{
 					GCALENDARDEBUG("Parser: End feed tag\n");
 					parserState_e = PARSER_DONE;
-					fcPos_ui8 = 0;
 				}
 				break;
 
@@ -157,54 +191,44 @@ bool gcalendarParse_b(char* data_pc, uint16_t len_ui16)
 					memset(currentElement_ac, 0, sizeof(currentElement_ac));
 					elemPos_ui8 = 0;
 				}
-				else if (strcmp(currentElement_ac, "/gd:when") == 0)
+				else if (strcmp_P(currentElement_ac, END_WHEN_TAG) == 0)
 				{
 					GCALENDARDEBUG("Parser: End when tag\n");
 				}
 				else if (strstr_P(currentElement_ac, WHEN_TAG) != 0)
 				{
 					GCALENDARDEBUG("Parser: When tag\n");
-					memcpy(text_ac + textPos_ui8, currentElement_ac + 17, 10);
-					textPos_ui8 += 10;
-					text_ac[textPos_ui8] = ' ';
-					textPos_ui8++;
-					memcpy(text_ac + textPos_ui8, currentElement_ac + 28, 8);
-					textPos_ui8 += 8;
-					text_ac[textPos_ui8] = '\n';
-					textPos_ui8++;
-					text_ac[textPos_ui8] = '\n';
-					textPos_ui8++;
+					textPos_ui8 = gcalendarGetWhen(currentElement_ac,
+							textPos_ui8, text_ac, sizeof(text_ac));
 				}
-				else if (strcmp(currentElement_ac, "/entry") == 0)
+				else if (strcmp_P(currentElement_ac, END_ENTRY_TAG) == 0)
 				{
-					GCALENDARDEBUG("Parser: End when tag\n");
+					GCALENDARDEBUG("Parser: End entry tag\n");
 					parserState_e = PARSER_WAIT_TAG;
 				}
 				else
 				{
-					GCALENDARDEBUG("Parser: Ignored tag\n");
+					//GCALENDARDEBUG("Parser: Ignored tag\n");
 				}
 				break;
 
 			case PARSER_IN_TITLE:
-				if (strcmp(currentElement_ac, "/title") == 0)
+				if (strcmp_P(currentElement_ac, END_TITLE_TAG) == 0)
 				{
 					GCALENDARDEBUG("Parser: End title tag\n");
 					parserState_e = PARSER_IN_ENTRY;
 				}
 				else
 				{
-					memcpy(text_ac + textPos_ui8, currentElement_ac,
-							elemPos_ui8);
-					textPos_ui8 += elemPos_ui8;
-					text_ac[textPos_ui8] = '\n';
-					textPos_ui8++;
-					GCALENDARDEBUG("Parser: Title", text_ac);
+					GCALENDARDEBUG("Parser: Title\n");
+					textPos_ui8 = gcalendarGetTitle(currentElement_ac,
+							textPos_ui8, elemPos_ui8, text_ac, sizeof(text_ac));
 				}
 				break;
 
 			case PARSER_DONE:
 				GCALENDARDEBUG("Parser: Done %s\n", text_ac);
+				text_ac[textPos_ui8] = 0;
 				break;
 
 			default:
@@ -224,6 +248,8 @@ void gcalendarBeginReceive_v(void)
 {
 	parserState_e = PARSER_WAIT_TAG;
 	elementParserState_e = ELEMPARSER_WAIT_BEGIN;
+	elemPos_ui8 = 0;
+	textPos_ui8 = 0;
 
 	memset(text_ac, 0, sizeof(text_ac));
 
@@ -232,6 +258,12 @@ void gcalendarBeginReceive_v(void)
 
 void gcalendarEndReceive_v(void)
 {
+	if (parserState_e != PARSER_DONE)
+	{
+		GCALENDARDEBUG("Oops! Error while parsing!\n");
+	}
+
+	text_ac[textPos_ui8] = 0;
 	glcdmenuRedraw();
 }
 
