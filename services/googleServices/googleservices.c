@@ -42,10 +42,10 @@
 
 #define STATE (&uip_conn->appstate.gservices)
 
-static const gServiceFunctions_t funcPtrs[GSERVICES_NUM_SERVICES] = {
-		GSERVICE_WEATHER_INIT,
-		GSERVICE_CALENDAR_INIT
-};
+static const gServiceFunctions_t funcPtrs[GSERVICES_NUM_SERVICES] =
+{
+GSERVICE_WEATHER_INIT,
+GSERVICE_CALENDAR_INIT };
 
 static void gservicesQueryCB_v(char *name, uip_ipaddr_t *ipaddr);
 static void gservicesMain_v(void);
@@ -101,6 +101,20 @@ static void gservicesMain_v(void)
 {
 	uint16_t len_ui16;
 
+	if (uip_newdata())
+	{
+		if (uip_len && STATE->stage_e == GSERVICE_RECEIVE)
+		{
+			GSERVICESDEBUG("New Data\n");
+			if (funcPtrs[STATE->service_e].parse_b(((char *) uip_appdata), uip_len) == false)
+			{
+				GSERVICESDEBUG("Parser error\n");
+				uip_close (); /* Parse error */
+				return;
+			}
+		}
+	}
+
 	if (uip_aborted() || uip_timedout())
 	{
 		GSERVICESDEBUG ("connection aborted\n");
@@ -108,7 +122,7 @@ static void gservicesMain_v(void)
 		funcPtrs[STATE->service_e].endReceive_v();
 	}
 
-	if (uip_closed())
+	if (uip_closed() && STATE->stage_e != GSERVICE_IDLE)
 	{
 		GSERVICESDEBUG("connection closed\n");
 		STATE->stage_e = GSERVICE_IDLE;
@@ -122,7 +136,7 @@ static void gservicesMain_v(void)
 	}
 
 	if (uip_rexmit() && (STATE->stage_e == GSERVICE_SEND_REQUEST
-			|| STATE->stage_e == GSERVICE_WAIT_RESPONSE))
+					|| STATE->stage_e == GSERVICE_WAIT_RESPONSE))
 	{
 		GSERVICESDEBUG("Re-Xmit\n");
 		len_ui16 = funcPtrs[STATE->service_e].getRequestString(uip_sappdata);
@@ -146,28 +160,17 @@ static void gservicesMain_v(void)
 		STATE->stage_e = GSERVICE_RECEIVE;
 		funcPtrs[STATE->service_e].beginReceive_v();
 	}
-
-	if (uip_newdata())
-	{
-		if (uip_len && STATE->stage_e == GSERVICE_RECEIVE)
-		{
-			GSERVICESDEBUG("New Data\n");
-			if (funcPtrs[STATE->service_e].parse_b(((char *) uip_appdata), uip_len) == false)
-			{
-				GSERVICESDEBUG("Parser error\n");
-				uip_close (); /* Parse error */
-				return;
-			}
-		}
-	}
 }
 
 void gservicesInit_v(void)
 {
 	uint8_t i;
 	GSERVICESDEBUG("initializing google services client\n");
+
+	/* Try to resolve host address first */
 	resolv_query(GSERVICES_HOST, gservicesQueryCB_v);
 
+	/* Call init functions for all services */
 	for (i = 0; i < GSERVICES_NUM_SERVICES; i++)
 	{
 		funcPtrs[i].init_v();
