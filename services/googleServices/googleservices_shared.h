@@ -26,12 +26,13 @@
 
 #define GSERVICES_HOST "www.google.de"
 
+/* Pointer to callout into the services */
 typedef struct {
-	void(*init_v)(void);
-	uint16_t(*getRequestString)(char[]);
-	void(*endReceive_v)(void);
-	void(*beginReceive_v)(void);
-	bool(*parse_b)(char*, uint16_t);
+	void(*init_v)(void);					/* Init after reset */
+	uint16_t(*getRequestString)(char[]);	/* Get request string for service data */
+	void(*endReceive_v)(void);				/* All data received */
+	void(*beginReceive_v)(void);			/* Start of incoming data */
+	bool(*parse_b)(char*, uint16_t);		/* Parser for incoming data */
 }gServiceFunctions_t;
 
 bool gservicesUpdate_b(gservicesServiceTypes_t serviceType_e);

@@ -26,11 +26,11 @@
 #include "googleservices.h"
 
 typedef enum {
-	GSERVICE_IDLE,
-    GSERVICE_CONNECT,
-    GSERVICE_SEND_REQUEST,
-    GSERVICE_WAIT_RESPONSE,
-    GSERVICE_RECEIVE
+	GSERVICE_IDLE,			/* ready to connect */
+    GSERVICE_CONNECT,		/* Waiting for connection to host */
+    GSERVICE_SEND_REQUEST,	/* Ready to send request to host */
+    GSERVICE_WAIT_RESPONSE,	/* Wait for response from host */
+    GSERVICE_RECEIVE		/* Wait for incoming data from host */
 }gServicesConnectionStage_t;
 
 #include <inttypes.h>
