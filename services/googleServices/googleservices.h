@@ -25,8 +25,8 @@
 #include <stdbool.h>
 
 typedef enum {
-		GWEATHER_SERVICE,
-		GCALENDAR_SERVICE,
+		GWEATHER_SERVICE,  		/* Google weather */
+		GCALENDAR_SERVICE,		/* Google calendar */
 		GSERVICES_NUM_SERVICES
 }gservicesServiceTypes_t;
 

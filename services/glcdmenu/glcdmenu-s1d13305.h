@@ -28,6 +28,15 @@ glcdmenuDrawS1D13305(uint16_t xPos_ui16, uint16_t yPos_ui16, uint8_t color_ui8);
 void
 glcdmenuFlushS1D13305(void);
 
+/* Pointer to callout into the services */
+typedef struct {
+	void(*init_v)(void);					/* Init after reset */
+	uint16_t(*getRequestString)(char[]);	/* Get request string for service data */
+	void(*endReceive_v)(void);				/* All data received */
+	void(*beginReceive_v)(void);			/* Start of incoming data */
+	bool(*parse_b)(char*, uint16_t);		/* Parser for incoming data */
+}gServiceFunctions_t;
+
 void
 glcdmenuClearS1D13305(void);
 
