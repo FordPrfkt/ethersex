@@ -7,8 +7,8 @@
 
 #define LARGESCREEN
 
-#define MENU_DATASIZE 957
-#define MENU_OBJECTS_MAX 39
+#define MENU_DATASIZE 940
+#define MENU_OBJECTS_MAX 38
 #define MENU_LIST_MAX 1
 #define MENU_TEXT_MAX 25
 #define MENU_CHECKBOX_MAX 0
@@ -44,8 +44,8 @@
 #define MENU_TEXT_W_FC3 20
 #define MENU_TEXT_W_FC4 21
 #define MENU_TEXT_TI_LIST 22
-#define MENU_TEXT_DATE 23
-#define MENU_TEXT_TIME 24
+#define MENU_TEXT_31.12.2010 23
+#define MENU_TEXT_23:59:59 24
 
 
 
@@ -61,4 +61,19 @@
 #define MENU_USE_WINDOW
 #define MENU_USE_SHORTCUT
 
+#define MENU_SDATA_1_14 403
+#define MENU_SDATA_1_41 567
+#define MENU_SDATA_1_5 402
+#define MENU_SDATA_1_7 760
+#define MENU_SDATA_1_10 768
+#define MENU_SDATA_1_22 780
+#define MENU_SDATA_1_29 780
+#define MENU_SDATA_1_34 780
+#define MENU_SDATA_1_37 780
+#define MENU_SDATA_1_43 784
+#define MENU_SDATA_1_42 402
+#define MENU_SDATA_2_1 921
+#define MENU_SDATA_2_2 933
+
 #endif
+
