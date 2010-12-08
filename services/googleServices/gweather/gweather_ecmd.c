@@ -31,26 +31,26 @@
 #include "gweather.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-int16_t parse_cmd_update(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_weatherUpdate(char *cmd, char *output, uint16_t len)
 {
   return gweatherUpdate_i16(cmd, output, len);
 }
 
-int16_t parse_cmd_city(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_weatherCity(char *cmd, char *output, uint16_t len)
 {
    if (*cmd == '\0')
    {
 	   return ECMD_FINAL(snprintf_P(output, len, PSTR("%s"), "gweatherCity_ac"));
    }
 
-   return gweatherSetCity_b(cmd, len) == true ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
+   return (gweatherSetCity_b(cmd, len) == true) ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
 }
 
 /*
 -- Ethersex META --
 block(Google_Weather)
-ecmd_feature(update, "weather update",, gWeather update)
-ecmd_feature(city, "weather city ", CITYNAME, gWeather set CITYNAME)
+ecmd_feature(weatherUpdate, "weather update",, gWeather update)
+ecmd_feature(weatherCity, "weather city ", CITYNAME, gWeather set CITYNAME)
 */
 
 /* EOF */
