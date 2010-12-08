@@ -33,6 +33,7 @@ int16_t gcalendarUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
 void gcalendarInit_v(void);
 bool gcalendarParse_b(char* data_pc, uint16_t len_ui16);
 bool gcalendarSetLogin_b(char* login_pc, uint16_t len_ui16);
+char* gcalendarGetLogin_ac(void);
 void gcalendarBeginReceive_v(void);
 void gcalendarEndReceive_v(void);
 uint16_t gcalendarGetRequestString_v(char request_ac[]);

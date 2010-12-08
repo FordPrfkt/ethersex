@@ -1,6 +1,5 @@
 changequote({{,}})dnl
-ifdef({{conf_GSERVICE_SUPPORT}}, {{}}, {{m4exit(1)}})dnl
-ifdef({{conf_GSERVICE_SUPPORT_INLINE}}, {{}}, {{m4exit(1)}})dnl
+ifdef({{conf_GSERVICE_INLINE_SUPPORT}}, {{}}, {{m4exit(1)}})dnl
 <html>
 <head>
 <title>Google Services</title>
@@ -35,18 +34,20 @@ function changeState(request, data) {
 
 </script>
 </head><body onLoad='fillFields()'>
-<h1>Ethersex Setup</h1>
+<h1>Google Services configuration</h1>
 <div id="valdiv">
 <center><table>
 ifdef({{conf_GWEATHER_SUPPORT}}, {{}}, {{dnl
+	<h2>Google Weather</h2>
 	<tr>
-	<td>Google weather</td>
+	<td>City</td>
 	<td><input type="text" id="weather_city" onChange='getCmd("weather_city " + this.value, changeState, this);'></td>
 	</tr>
 }})dnl
 ifdef({{conf_GCALENDAR_SUPPORT}},{{dnl
+	<h2>Google calendar</h2>
 	<tr>
-	<td>Google calendar</td>
+	<td>Login</td>
 	<td><input type="text" id="calendar_login" onChange='getCmd("calendar_login" + this.value, changeState, this);'></td>
 	</tr>
 }})dnl

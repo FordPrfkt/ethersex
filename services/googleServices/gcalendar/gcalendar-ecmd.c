@@ -40,7 +40,7 @@ int16_t parse_cmd_gcalendarLogin(char *cmd, char *output, uint16_t len)
 {
    if (*cmd == '\0')
    {
-	   return ECMD_FINAL(snprintf_P(output, len, PSTR("%s"), gCalendarLogin_ac));
+	   return ECMD_FINAL(snprintf_P(output, len, PSTR("%s"), gcalendarGetLogin_ac()));
    }
 
    return (gcalendarSetLogin_b(cmd, len) == true) ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
@@ -50,5 +50,5 @@ int16_t parse_cmd_gcalendarLogin(char *cmd, char *output, uint16_t len)
 -- Ethersex META --
 block(Google_Calendar)
 ecmd_feature(gcalendarUpdate, "calendar update",, gCalendar cal_update)
-ecmd_feature(gcalendarLogin, "calendar login ", LOGIN, gCalendar set LOGIN)
+ecmd_feature(gcalendarLogin, "calendar login", LOGIN, gCalendar set LOGIN)
 */

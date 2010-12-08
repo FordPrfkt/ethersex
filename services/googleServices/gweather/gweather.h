@@ -43,6 +43,7 @@ void gweatherInit_v(void);
 bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
 bool gweatherParse_b(char* data_pc, uint16_t len_ui16);
 bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16);
+char* gweatherGetCity_ac(void);
 void gweatherBeginReceive_v(void);
 void gweatherEndReceive_v(void);
 uint16_t gweatherGetRequestString_v(char request_ac[]);

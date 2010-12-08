@@ -290,6 +290,11 @@ bool gcalendarSetLogin_b(char* login_pc, uint16_t len_ui16)
 	return true;
 }
 
+char* gcalendarGetLogin_ac(void)
+{
+	return gCalendarLogin_ac;
+}
+
 int16_t gcalendarUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
 {
 	gservicesUpdate_b(GCALENDAR_SERVICE);
