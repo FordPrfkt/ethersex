@@ -464,6 +464,11 @@ bool gweatherSetCity_b(char* city_pc, uint16_t len_ui16)
 	return true;
 }
 
+char* gweatherGetCity_ac(void)
+{
+	return gweatherCity_ac;
+}
+
 void gweatherInit_v(void)
 {
 	GWEATHERDEBUG("initializing google weather client\n");
