@@ -31,24 +31,24 @@
 #include "gcalendar.h"
 #include "protocols/ecmd/ecmd-base.h"
 
-int16_t parse_cmd_cal_update(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_gcalendarUpdate(char *cmd, char *output, uint16_t len)
 {
   return gcalendarUpdate_i16(cmd, output, len);
 }
 
-int16_t parse_cmd_login(char *cmd, char *output, uint16_t len)
+int16_t parse_cmd_gcalendarLogin(char *cmd, char *output, uint16_t len)
 {
    if (*cmd == '\0')
    {
 	   return ECMD_FINAL(snprintf_P(output, len, PSTR("%s"), gCalendarLogin_ac));
    }
 
-   return gcalendarSetLogin_b(cmd, len) == true ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
+   return (gcalendarSetLogin_b(cmd, len) == true) ? ECMD_FINAL_OK:ECMD_ERR_PARSE_ERROR;
 }
 
 /*
 -- Ethersex META --
 block(Google_Calendar)
-ecmd_feature(cal_update, "calendar cal_update",, gCalendar cal_update)
-ecmd_feature(login, "calendar login ", LOGIN, gCalendar set LOGIN)
+ecmd_feature(gcalendarUpdate, "calendar update",, gCalendar cal_update)
+ecmd_feature(gcalendarLogin, "calendar login ", LOGIN, gCalendar set LOGIN)
 */
