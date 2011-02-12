@@ -24,20 +24,10 @@
 
 #include <stdbool.h>
 
-#define FC_NUM_ELEM 4
 #define GWEATHER_CITYSIZE 16
 
 #define GSERVICE_WEATHER_INIT {gweatherInit_v, gweatherGetRequestString_v, gweatherEndReceive_v, gweatherBeginReceive_v, gweatherParse_b}
 
-typedef struct
-{
-	char dayOfWeek_ac[4];
-	char lowTemp_ac[5];
-	char highTemp_ac[5];
-	char condition_ac[21];
-} gWeatherForecast_t;
-
-int16_t gweather_onrequest(char *cmd, char *output, uint16_t len);
 int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16);
 void gweatherInit_v(void);
 bool gweatherGetAttribute_b(char* inStr_pc, uint8_t inLen_ui8, char* outStr_pc, uint8_t outLen_ui8);
@@ -47,6 +37,12 @@ char* gweatherGetCity_ac(void);
 void gweatherBeginReceive_v(void);
 void gweatherEndReceive_v(void);
 uint16_t gweatherGetRequestString_v(char request_ac[]);
+
+#define HOOK_NAME gweather_updated
+#define HOOK_ARGS (uint8_t result)
+#include "hook.def"
+#undef HOOK_NAME
+#undef HOOK_ARGS
 
 #include "config.h"
 #ifdef DEBUG_GWEATHER

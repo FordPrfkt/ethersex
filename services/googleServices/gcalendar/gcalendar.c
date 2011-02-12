@@ -18,6 +18,11 @@
  * For more information on the GPL, please go to:
  * http://www.gnu.org/copyleft/gpl.html
  */
+#define HOOK_NAME gcalendar_updated
+#define HOOK_ARGS (uint8_t result)
+#define HOOK_COUNT 1
+#define HOOK_ARGS_CALL (result)
+#define HOOK_IMPLEMENT 1
 
 #include <avr/pgmspace.h>
 #include <stdio.h>
@@ -31,9 +36,6 @@
 #include "../googleservices_shared.h"
 #include "protocols/ecmd/parser.h"
 #include "protocols/ecmd/ecmd-base.h"
-
-#include "../../glcdmenu/glcdmenu.h"
-#include "../../glcdmenu/menu-interpreter/menu-interpreter-config.h"
 
 enum
 {
@@ -252,19 +254,21 @@ void gcalendarBeginReceive_v(void)
 	textPos_ui8 = 0;
 
 	memset(text_ac, 0, sizeof(text_ac));
-
-	glcdmenuSetString(MENU_TEXT_TI_LIST, (unsigned char*) text_ac);
 }
 
 void gcalendarEndReceive_v(void)
 {
+	uint8_t result = 1;
+
 	if (parserState_e != PARSER_DONE)
 	{
 		GCALENDARDEBUG("Oops! Error while parsing!\n");
+		result = 0;
 	}
 
 	text_ac[textPos_ui8] = 0;
-	glcdmenuRedraw();
+
+	hook_gweather_updated_call(result);
 }
 
 uint16_t gcalendarGetRequestString_v(char request_ac[])
@@ -310,6 +314,11 @@ void gcalendarInit_v(void)
 #else
 	sprintf(gCalendarLogin_ac, PSTR("%s"), CONF_GCALENDAR_LOGIN);
 #endif
+}
+
+void gservicesGetCalendarText_v(char text[])
+{
+	text = text_ac;
 }
 
 /* EOF */

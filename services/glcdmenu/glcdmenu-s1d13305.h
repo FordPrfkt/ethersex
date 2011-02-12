@@ -43,4 +43,30 @@ glcdmenuClearS1D13305(void);
 void
 glcdmenuInitS1D13305(void);
 
+#ifdef GCALENDAR_SUPPORT
+void gservicesGetCalendarText_v(char text[]);
+#endif
+
+#ifdef GWEATHER_SUPPORT
+#define FC_NUM_ELEM 4
+
+typedef struct
+{
+	char dayOfWeek_ac[4];
+	char lowTemp_ac[5];
+	char highTemp_ac[5];
+	char condition_ac[21];
+} gWeatherForecast_t;
+
+void gservicesGetWeatherCity_v(char text[]);
+void gservicesGetWeatherDate_v(char text[]);
+void gservicesGetWeatherCondition_v(char text[]);
+void gservicesGetWeatherTemperature_v(char text[]);
+void gservicesGetWeatherHumidity_v(char text[]);
+void gservicesGetWeatherWind_v(char text[]);
+void gservicesGetWeatherForecast_v(gWeatherForecast_t forecast[]);
+#endif
+
+#endif  /* HAVE_GOOGLESERVICES_SHARED_H */
 #endif  /* HAVE_GLCDMENU_S1D13305_H */
+/* EOF */

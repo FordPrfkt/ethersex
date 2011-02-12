@@ -18,6 +18,11 @@
  * For more information on the GPL, please go to:
  * http://www.gnu.org/copyleft/gpl.html
  */
+#define HOOK_NAME gweather_updated
+#define HOOK_ARGS (uint8_t result)
+#define HOOK_COUNT 1
+#define HOOK_ARGS_CALL (result)
+#define HOOK_IMPLEMENT 1
 
 #include <avr/pgmspace.h>
 #include <stdio.h>
@@ -31,9 +36,6 @@
 #include "../googleservices_shared.h"
 #include "protocols/ecmd/parser.h"
 #include "protocols/ecmd/ecmd-base.h"
-
-#include "../../glcdmenu/glcdmenu.h"
-#include "../../glcdmenu/menu-interpreter/menu-interpreter-config.h"
 
 typedef enum {
 	PARSER_WAIT_START,
@@ -398,47 +400,18 @@ void gweatherBeginReceive_v(void)
 	memset(temperature_ac, 0, sizeof(temperature_ac));
 	memset(humidity_ac, 0, sizeof(humidity_ac));
 	memset(wind_ac, 0, sizeof(wind_ac));
-	glcdmenuSetString(MENU_TEXT_W_CITY, (unsigned char*) city_ac);
-	glcdmenuSetString(MENU_TEXT_W_DATE, (unsigned char*) date_ac);
-	glcdmenuSetString(MENU_TEXT_W_WIND, (unsigned char*) wind_ac);
-	glcdmenuSetString(MENU_TEXT_W_COND, (unsigned char*) condition_ac);
-	glcdmenuSetString(MENU_TEXT_W_TEMP, (unsigned char*) temperature_ac);
-	glcdmenuSetString(MENU_TEXT_W_HUMID, (unsigned char*) humidity_ac);
-	glcdmenuSetString(MENU_TEXT_W_DOW1,
-			(unsigned char*) forecast_as[0].dayOfWeek_ac);
-	glcdmenuSetString(MENU_TEXT_W_DOW2,
-			(unsigned char*) forecast_as[1].dayOfWeek_ac);
-	glcdmenuSetString(MENU_TEXT_W_DOW3,
-			(unsigned char*) forecast_as[2].dayOfWeek_ac);
-	glcdmenuSetString(MENU_TEXT_W_DOW4,
-			(unsigned char*) forecast_as[3].dayOfWeek_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT1,
-			(unsigned char*) forecast_as[0].lowTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT2,
-			(unsigned char*) forecast_as[0].highTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT3,
-			(unsigned char*) forecast_as[1].lowTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT4,
-			(unsigned char*) forecast_as[1].highTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT5,
-			(unsigned char*) forecast_as[2].lowTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT6,
-			(unsigned char*) forecast_as[2].highTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT7,
-			(unsigned char*) forecast_as[3].lowTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FT8,
-			(unsigned char*) forecast_as[3].highTemp_ac);
-	glcdmenuSetString(MENU_TEXT_W_FC1,
-			(unsigned char*) forecast_as[1].condition_ac);
-	glcdmenuSetString(MENU_TEXT_W_FC3,
-			(unsigned char*) forecast_as[2].condition_ac);
-	glcdmenuSetString(MENU_TEXT_W_FC4,
-			(unsigned char*) forecast_as[3].condition_ac);
 }
 
 void gweatherEndReceive_v(void)
 {
-	glcdmenuRedraw();
+	uint8_t result = 1;
+	if (parserState_e != PARSER_DONE)
+	{
+		GWEATHERDEBUG("Oops! Error while parsing!\n");
+		result = 0;
+	}
+
+	hook_gweather_updated_call(result);
 }
 
 uint16_t gweatherGetRequestString_v(char request_ac[])
@@ -486,12 +459,39 @@ int16_t gweatherUpdate_i16(char *cmd_pc, char *output_pc, uint16_t len_ui16)
 	return ECMD_FINAL_OK;
 }
 
-int16_t gweather_onrequest(char *cmd, char *output, uint16_t len)
+void gservicesGetWeatherCity_v(char text[])
 {
-	GWEATHERDEBUG ("main\n");
-	// enter your code here
+	text = city_ac;
+}
 
-	return ECMD_FINAL_OK;
+void gservicesGetWeatherDate_v(char text[])
+{
+	text = date_ac;
+}
+
+void gservicesGetWeatherCondition_v(char text[])
+{
+	text = condition_ac;
+}
+
+void gservicesGetWeatherTemperature_v(char text[])
+{
+	text = temperature_ac;
+}
+
+void gservicesGetWeatherHumidity_v(char text[])
+{
+	text = humidity_ac;
+}
+
+void gservicesGetWeatherWind_v(char text[])
+{
+	text = wind_ac;
+}
+
+void gservicesGetWeatherForecast_v(gWeatherForecast_t forecast[])
+{
+	forecast = forecast_as;
 }
 
 /* EOF */
