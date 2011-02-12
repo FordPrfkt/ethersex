@@ -38,6 +38,12 @@ void gcalendarBeginReceive_v(void);
 void gcalendarEndReceive_v(void);
 uint16_t gcalendarGetRequestString_v(char request_ac[]);
 
+#define HOOK_NAME gcalendar_updated
+#define HOOK_ARGS (uint8_t result)
+#include "hook.def"
+#undef HOOK_NAME
+#undef HOOK_ARGS
+
 #include "config.h"
 #ifdef DEBUG_GCALENDAR
 # include "core/debug.h"
