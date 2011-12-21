@@ -11,8 +11,13 @@ dep_bool_menu "S1D13305 module driver (GLCD)" S1D13305_SUPPORT $ARCH_AVR
 		int "XTAL" CONF_S1D13305_XTAL 10000000
 		int "Refresh rate" CONF_S1D13305_REFRESH 75
 		bool "Backlight support" LCD_BACKLIGHT_SUPPORT y
-      define_bool LCD_SUPPORT y
+	comment 'Controller Interface'
+	choice 'Interface'						\
+		"Parallel		S1D13305_IF_PAR		\
+		I2C/PCA9555		S1D13305_IF_I2C"	\
+		Parallel		S1D13305_INTERFACE
+	define_bool LCD_SUPPORT y
     fi
 	comment  "Debugging Flags"
 	dep_bool 'S1D13305' DEBUG_S1D13305 $DEBUG $S1D13305_SUPPORT
-  endmenu
+endmenu
