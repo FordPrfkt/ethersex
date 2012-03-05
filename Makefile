@@ -108,6 +108,7 @@ SUBDIRS += services/watchcat
 SUBDIRS += services/vnc
 SUBDIRS += services/watchasync
 SUBDIRS += services/curtain
+SUBDIRS += services/googleServices
 SUBDIRS += services/glcdmenu
 SUBDIRS += services/lome6
 SUBDIRS += services/projectors/sanyoZ700
